@@ -40,6 +40,16 @@ pub enum OcrError {
     /// Model inference errors
     #[error("Model inference error: {0}")]
     InferenceError(String),
+
+    /// 引擎错误
+    /// Engine errors
+    #[error("Engine error: {0}")]
+    EngineError(String),
+
+    /// 线程错误
+    /// Thread errors
+    #[error("Thread error: {0}")]
+    ThreadError(String),
 }
 
 /// OCR操作的结果类型

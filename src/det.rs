@@ -18,10 +18,21 @@ pub struct Det {
 }
 
 impl Det {
-    const RECT_BORDER_SIZE: u32 = 50; // 增加默认边界尺寸，原来是10
+    /// 默认边界尺寸常量
+    /// Default rectangle border size constant 
+    pub const RECT_BORDER_SIZE: u32 = 50;
+    
+    /// 二值化阈值常量
+    /// Binary threshold constant
     const THRESHOLD: u8 = 200;
-    const MIN_BOX_SIZE: u32 = 5; // 增大最小边界框尺寸阈值，过滤噪声
-    const DEFAULT_MERGE_THRESHOLD: i32 = 10; // 添加合并阈值常量
+    
+    /// 最小边界框尺寸阈值，用于过滤噪声
+    /// Minimum box size threshold for filtering noise
+    const MIN_BOX_SIZE: u32 = 5;
+    
+    /// 默认的边界框合并阈值
+    /// Default threshold for merging text boxes
+    pub const DEFAULT_MERGE_THRESHOLD: i32 = 10;
 
     /// 创建新的文本检测器实例
     ///

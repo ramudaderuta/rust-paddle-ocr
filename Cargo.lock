@@ -256,6 +256,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1152,12 +1161,14 @@ checksum = "57397d16646700483b67d2dd6511d79318f9d057fdbd21a4066aeac8b41d310a"
 name = "rust-paddle-ocr"
 version = "1.0.0"
 dependencies = [
+ "crossbeam-channel",
  "env_logger",
  "image",
  "imageproc",
  "log",
  "mnn",
  "ndarray",
+ "once_cell",
  "thiserror 2.0.12",
 ]
 
