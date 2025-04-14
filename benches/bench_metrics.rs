@@ -1,12 +1,9 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use image::DynamicImage;
-use log::LevelFilter;
 use rust_paddle_ocr::{Det, Rec};
 use std::time::Duration;
 
 fn setup() -> (Det, Rec, DynamicImage) {
-    env_logger::builder().filter_level(LevelFilter::Warn).init();
-
     // 加载模型 - 在性能测试前完成
     let det = Det::from_file("./models/ch_PP-OCRv4_det_infer.mnn")
         .expect("Failed to load detection model")

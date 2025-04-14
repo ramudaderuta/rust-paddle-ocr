@@ -43,7 +43,7 @@ once_cell = "1.17"
 
 [dependencies.mnn]
 git = "https://github.com/zibo-chen/mnn-rs.git"
-features = ["opencl"]
+features = []
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
