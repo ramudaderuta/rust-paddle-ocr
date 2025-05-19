@@ -13,6 +13,7 @@ PaddleOCR 모델을 기반으로 Rust로 구현된 경량 및 효율적인 OCR(�
 - **고성능**: MNN 추론 프레임워크로 최적화됨
 - **최소한의 의존성**: 경량이며 쉽게 통합 가능
 - **사용자 정의 가능**: 다양한 사용 사례에 맞게 조정 가능한 매개변수
+- **명령줄 도구**: OCR 인식을 위한 간단한 명령줄 인터페이스
 
 ## 설치
 
@@ -36,6 +37,32 @@ branch = "main"
 이 라이브러리는 다음이 필요합니다:
 - MNN 형식으로 변환된 사전 훈련된 PaddleOCR 모델
 - 텍스트 인식을 위한 문자 집합 파일
+
+## 명령줄 도구
+
+이 라이브러리는 직접 OCR 인식을 수행할 수 있는 내장 명령줄 도구를 제공합니다:
+
+```bash
+# 기본 사용법
+./ocr -p path/to/image.jpg
+
+# JSON 형식으로 출력 (자세한 정보와 위치 포함)
+./ocr -p path/to/image.jpg -m json
+
+# 상세 로그 정보 표시
+./ocr -p path/to/image.jpg -v
+```
+
+### 명령줄 옵션
+
+```
+옵션:
+  -p, --path <IMAGE_PATH>  인식할 이미지 경로
+  -m, --mode <MODE>        출력 모드: json(상세) 또는 text(간단) [기본값: text]
+  -v, --verbose            상세 로그 정보 표시 여부
+  -h, --help               도움말 정보 출력
+  -V, --version            버전 정보 출력
+```
 
 ## 사용 예시
 
@@ -76,6 +103,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+## 실행 예시
+
+다음은 이 라이브러리의 실행 예시입니다:
+
+### 예시 1
+![원본 이미지 1](res/1.png)
+![OCR 결과 1](res/1_ocr_result.png)
+
+### 예시 2
+![원본 이미지 2](res/2.png)
+![OCR 결과 2](res/2_ocr_result.png)
+
+### 예시 3
+![원본 이미지 3](res/3.png)
+![OCR 결과 3](res/3_ocr_result.png)
 
 ## API 참조
 

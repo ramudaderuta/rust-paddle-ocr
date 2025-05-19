@@ -15,6 +15,16 @@ pub enum OcrError {
     /// Image processing errors
     #[error("Image processing error: {0}")]
     ImageError(#[from] image::ImageError),
+    
+    /// 命令行参数错误
+    /// Command line argument errors
+    #[error("Command line argument error: {0}")]
+    ArgError(String),
+    
+    /// JSON序列化/反序列化错误
+    /// JSON serialization/deserialization errors
+    #[error("JSON error: {0}")]
+    JsonError(String),
 
     /// MNN推理框架错误
     /// MNN inference framework errors

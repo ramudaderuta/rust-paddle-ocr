@@ -13,6 +13,7 @@
 - **高性能**：使用MNN推理框架优化
 - **最小依赖**：轻量级且易于集成
 - **可自定义**：针对不同用例的可调整参数
+- **命令行工具**：提供简单的命令行界面进行OCR识别
 
 ## 安装
 
@@ -36,6 +37,32 @@ branch = "main"
 该库需要：
 - 转换为MNN格式的预训练PaddleOCR模型
 - 用于文本识别的字符集文件
+
+## 命令行工具
+
+该库提供了一个内置的命令行工具，可以直接进行OCR识别：
+
+```bash
+# 基本用法
+./ocr -p path/to/image.jpg
+
+# 输出JSON格式（包含详细信息和位置）
+./ocr -p path/to/image.jpg -m json
+
+# 显示详细日志信息
+./ocr -p path/to/image.jpg -v
+```
+
+### 命令行选项
+
+```
+选项:
+  -p, --path <IMAGE_PATH>  要识别的图像路径
+  -m, --mode <MODE>        输出模式: json(详细) 或 text(简单) [默认: text]
+  -v, --verbose            是否显示详细日志
+  -h, --help               显示帮助信息
+  -V, --version            显示版本信息
+```
 
 ## 使用示例
 

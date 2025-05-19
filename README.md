@@ -13,6 +13,7 @@ A lightweight and efficient OCR (Optical Character Recognition) library implemen
 - **High Performance**: Optimized with the MNN inference framework
 - **Minimal Dependencies**: Lightweight and easy to integrate
 - **Customizable**: Adjustable parameters for different use cases
+- **Command-line Tool**: Simple command-line interface for OCR recognition
 
 ## Installation
 
@@ -36,6 +37,32 @@ branch = "main"
 This library requires:
 - Pre-trained PaddleOCR models converted to MNN format
 - Character set file for text recognition
+
+## Command-line Tool
+
+This library provides a built-in command-line tool for direct OCR recognition:
+
+```bash
+# Basic usage
+./ocr -p path/to/image.jpg
+
+# Output in JSON format (with detailed information and positions)
+./ocr -p path/to/image.jpg -m json
+
+# Show verbose log information
+./ocr -p path/to/image.jpg -v
+```
+
+### Command-line Options
+
+```
+Options:
+  -p, --path <IMAGE_PATH>  Path to the image for recognition
+  -m, --mode <MODE>        Output mode: json(detailed) or text(simple) [default: text]
+  -v, --verbose            Show verbose log information
+  -h, --help               Print help information
+  -V, --version            Print version information
+```
 
 ## Usage Example
 

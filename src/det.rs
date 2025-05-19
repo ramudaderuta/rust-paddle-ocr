@@ -19,17 +19,17 @@ pub struct Det {
 
 impl Det {
     /// 默认边界尺寸常量
-    /// Default rectangle border size constant 
+    /// Default rectangle border size constant
     pub const RECT_BORDER_SIZE: u32 = 50;
-    
+
     /// 二值化阈值常量
     /// Binary threshold constant
     const THRESHOLD: u8 = 200;
-    
+
     /// 最小边界框尺寸阈值，用于过滤噪声
     /// Minimum box size threshold for filtering noise
     const MIN_BOX_SIZE: u32 = 5;
-    
+
     /// 默认的边界框合并阈值
     /// Default threshold for merging text boxes
     pub const DEFAULT_MERGE_THRESHOLD: i32 = 10;
@@ -53,6 +53,20 @@ impl Det {
     /// Create a text detector from a model file
     pub fn from_file(model_path: impl AsRef<Path>) -> OcrResult<Self> {
         let interpreter = Interpreter::from_file(model_path)?;
+        Ok(Self {
+            interpreter,
+            session: None,
+            rect_border_size: Self::RECT_BORDER_SIZE,
+            merge_boxes: true,
+            merge_threshold: Self::DEFAULT_MERGE_THRESHOLD,
+        })
+    }
+
+    /// 从内存字节创建文本检测器
+    ///
+    /// Create a text detector from model bytes in memory
+    pub fn from_bytes(model_bytes: impl AsRef<[u8]>) -> OcrResult<Self> {
+        let interpreter = Interpreter::from_bytes(model_bytes)?;
         Ok(Self {
             interpreter,
             session: None,
@@ -138,7 +152,7 @@ impl Det {
         for pixel in img.pixels() {
             let x = pixel.0 as usize;
             let y = pixel.1 as usize;
-            let [r, g, b, _] = pixel.2.0;
+            let [r, g, b, _] = pixel.2 .0;
 
             // 使用索引直接访问以提高性能
             input[[0, 0, y, x]] = (r as f32 / 255.0 - MEAN[0]) / STD[0];
@@ -417,6 +431,10 @@ impl Det {
     /// Calculate the padding length
     const fn get_pad_length(length: u32) -> u32 {
         let i = length % 32;
-        if i == 0 { length } else { length + 32 - i }
+        if i == 0 {
+            length
+        } else {
+            length + 32 - i
+        }
     }
 }

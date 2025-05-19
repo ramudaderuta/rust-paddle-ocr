@@ -61,6 +61,51 @@ impl Rec {
         })
     }
 
+    /// 从模型字节创建文本识别器，需要提供字符集文件路径
+    ///
+    /// Create a text recognizer from model bytes and character set file
+    pub fn from_bytes(model_bytes: impl AsRef<[u8]>, keys_path: impl AsRef<Path>) -> OcrResult<Self> {
+        let interpreter = Interpreter::from_bytes(model_bytes)?;
+        let keys_content = std::fs::read_to_string(keys_path)?;
+
+        let keys = " "
+            .chars()
+            .chain(keys_content.chars().filter(|x| *x != '\n' && *x != '\r'))
+            .chain(" ".chars())
+            .collect();
+
+        Ok(Self {
+            interpreter,
+            session: None,
+            keys,
+            min_score: Self::MIN_SCORE_DEFAULT,
+            punct_min_score: Self::PUNCT_MIN_SCORE_DEFAULT,
+        })
+    }
+
+    /// 从模型字节和字符集字节创建文本识别器
+    ///
+    /// Create a text recognizer from model bytes and character set bytes
+    pub fn from_bytes_with_keys(model_bytes: impl AsRef<[u8]>, keys_bytes: impl AsRef<[u8]>) -> OcrResult<Self> {
+        let interpreter = Interpreter::from_bytes(model_bytes)?;
+        let keys_content = std::str::from_utf8(keys_bytes.as_ref())
+            .map_err(|e| crate::error::OcrError::IOError(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+
+        let keys = " "
+            .chars()
+            .chain(keys_content.chars().filter(|x| *x != '\n' && *x != '\r'))
+            .chain(" ".chars())
+            .collect();
+
+        Ok(Self {
+            interpreter,
+            session: None,
+            keys,
+            min_score: Self::MIN_SCORE_DEFAULT,
+            punct_min_score: Self::PUNCT_MIN_SCORE_DEFAULT,
+        })
+    }
+
     /// 设置常规字符的最小识别置信度阈值
     ///
     /// Set the minimum confidence threshold for regular characters
@@ -99,6 +144,26 @@ impl Rec {
         Ok(ret.into_iter().map(|x| x.0).collect())
     }
 
+    /// 识别图像中的文本，返回字符串和置信度
+    ///
+    /// Recognize text in the image, returning a string and confidence score
+    pub fn predict_with_confidence(&mut self, img: &DynamicImage) -> OcrResult<(String, f32)> {
+        let char_scores = self.predict_char_score(img)?;
+
+        if char_scores.is_empty() {
+            return Ok((String::new(), 0.0));
+        }
+
+        // 计算平均置信度
+        let total_score: f32 = char_scores.iter().map(|(_, score)| *score).sum();
+        let avg_score = total_score / char_scores.len() as f32;
+
+        // 提取文本
+        let text: String = char_scores.into_iter().map(|(ch, _)| ch).collect();
+
+        Ok((text, avg_score))
+    }
+
     fn preprocess(img: &DynamicImage) -> OcrResult<ArrayBase<OwnedRepr<f32>, Dim<[usize; 4]>>> {
         let (w, h) = img.dimensions();
         let img = if h <= 48 {
@@ -116,7 +181,7 @@ impl Rec {
         for pixel in img.pixels() {
             let x = pixel.0 as usize;
             let y = pixel.1 as usize;
-            let [r, g, b, _] = pixel.2.0;
+            let [r, g, b, _] = pixel.2 .0;
 
             input[[0, 0, y, x]] = (r as f32 / 255.0 - MEAN) / STD;
             input[[0, 1, y, x]] = (g as f32 / 255.0 - MEAN) / STD;
