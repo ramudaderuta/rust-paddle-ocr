@@ -29,15 +29,39 @@ jobs:
     strategy:
       matrix:
         include:
+          # 现有的amd64架构
           - os: ubuntu-latest
             artifact_name: ocr
             asset_name: ocr-linux-amd64
+            target: x86_64-unknown-linux-gnu
           - os: windows-latest
             artifact_name: ocr.exe
             asset_name: ocr-windows-amd64.exe
+            target: x86_64-pc-windows-msvc
           - os: macos-latest
             artifact_name: ocr
             asset_name: ocr-macos-amd64
+            target: x86_64-apple-darwin
+          
+          # 添加arm64架构支持
+          - os: ubuntu-latest
+            artifact_name: ocr
+            asset_name: ocr-linux-arm64
+            target: aarch64-unknown-linux-gnu
+          - os: macos-latest
+            artifact_name: ocr
+            asset_name: ocr-macos-arm64
+            target: aarch64-apple-darwin
+          
+          # 添加32位架构支持
+          - os: ubuntu-latest
+            artifact_name: ocr
+            asset_name: ocr-linux-x86
+            target: i686-unknown-linux-gnu
+          - os: windows-latest
+            artifact_name: ocr.exe
+            asset_name: ocr-windows-x86.exe
+            target: i686-pc-windows-msvc
     
     steps:
       - uses: actions/checkout@v4
@@ -47,17 +71,34 @@ jobs:
         with:
           toolchain: stable
           override: true
+          target: ${{ matrix.target }}
+      
+      - name: Install Cross-Compilation Dependencies
+        if: contains(matrix.target, 'aarch64') || contains(matrix.target, 'i686')
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            sudo apt-get update
+            if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+              sudo apt-get install -y gcc-aarch64-linux-gnu
+            elif [[ "${{ matrix.target }}" == "i686-unknown-linux-gnu" ]]; then
+              sudo apt-get install -y gcc-multilib
+            fi
+          fi
+        shell: bash
       
       - name: Build Release Binary
-        run: cargo build --release --bin ocr
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --bin ocr --target ${{ matrix.target }}
       
       - name: Rename Binary
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp target/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
           else
-            cp target/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
           fi
       
       - name: Upload Release Asset
