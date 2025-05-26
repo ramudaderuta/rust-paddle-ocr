@@ -54,10 +54,6 @@ jobs:
             target: aarch64-apple-darwin
           
           # 添加32位架构支持
-          - os: ubuntu-latest
-            artifact_name: ocr
-            asset_name: ocr-linux-x86
-            target: i686-unknown-linux-gnu
           - os: windows-latest
             artifact_name: ocr.exe
             asset_name: ocr-windows-x86.exe
