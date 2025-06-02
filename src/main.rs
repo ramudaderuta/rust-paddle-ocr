@@ -1,6 +1,6 @@
 use clap::{Parser, ValueEnum};
 use log::{error, info};
-use rust_paddle_ocr::{Det, OcrError, OcrResult, Rec};
+use rust_paddle_ocr::{OcrEngineManager, OcrError, OcrResult};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -74,15 +74,20 @@ fn main() -> OcrResult<()> {
         )));
     }
 
-    // 直接从内存加载模型
-    info!("Loading detection model from memory...");
-    let mut det = Det::from_bytes(DET_MODEL)?
-        .with_rect_border_size(12)
-        .with_merge_boxes(false)
-        .with_merge_threshold(1);
+    let result = process_ocr(&args);
 
-    info!("Loading recognition model from memory...");
-    let mut rec = Rec::from_bytes_with_keys(REC_MODEL, KEYS_DATA)?;
+    info!("OCR process completed");
+    result
+}
+
+fn process_ocr(args: &Args) -> OcrResult<()> {
+    // 直接使用字节数据初始化OCR引擎
+    info!("Initializing OCR engine from embedded models...");
+    OcrEngineManager::initialize_with_config_and_bytes(
+        DET_MODEL, REC_MODEL, KEYS_DATA, 12,    // rect_border_size
+        false, // merge_boxes
+        1,     // merge_threshold
+    )?;
 
     // 加载图像
     info!("Loading image from {:?}...", args.path);
@@ -97,69 +102,53 @@ fn main() -> OcrResult<()> {
         }
     };
 
-    // 文本检测
-    info!("Performing text detection...");
-    let text_rects = match det.find_text_rect(&img) {
-        Ok(rects) => {
-            if rects.is_empty() {
-                info!("No text regions detected in the image.");
-            } else {
-                info!("Found {} text regions", rects.len());
-            }
-            rects
-        }
-        Err(e) => {
-            error!("Text detection failed: {}", e);
-            return Err(e);
-        }
-    };
-
-    // 获取文本区域
-    let text_images = match det.find_text_img(&img) {
-        Ok(images) => {
-            info!("Successfully extracted {} text images", images.len());
-            images
-        }
-        Err(e) => {
-            error!("Failed to extract text images: {}", e);
-            return Err(e);
-        }
-    };
-
-    // 确保文本区域和图像数量一致
-    if text_rects.len() != text_images.len() {
-        error!(
-            "Mismatch between text rectangles ({}) and text images ({})",
-            text_rects.len(),
-            text_images.len()
-        );
-        return Err(OcrError::EngineError(
-            "Inconsistent detection results".to_string(),
-        ));
-    }
-
-    // 文本识别并输出结果
-    info!("Performing text recognition...");
-
     // 根据输出模式处理结果
     match args.mode {
         OutputMode::Json => {
+            info!("Processing in JSON mode...");
+
+            // 获取文本区域矩形框
+            let text_rects = OcrEngineManager::get_text_rects(&img)?;
+            info!("Found {} text regions", text_rects.len());
+
+            if text_rects.is_empty() {
+                info!("No text regions detected in the image.");
+                println!("[]");
+                return Ok(());
+            }
+
+            // 获取文本区域图像
+            let text_images = OcrEngineManager::get_text_images(&img)?;
+            info!("Successfully extracted {} text images", text_images.len());
+
+            // 确保文本区域和图像数量一致
+            if text_rects.len() != text_images.len() {
+                error!(
+                    "Mismatch between text rectangles ({}) and text images ({})",
+                    text_rects.len(),
+                    text_images.len()
+                );
+                return Err(OcrError::EngineError(
+                    "Inconsistent detection results".to_string(),
+                ));
+            }
+
             let mut results = Vec::new();
 
-            for (i, (rect, sub_img)) in text_rects.iter().zip(text_images.iter()).enumerate() {
+            for (i, (rect, text_img)) in text_rects.iter().zip(text_images.iter()).enumerate() {
                 info!("Processing text region {} of {}", i + 1, text_rects.len());
 
                 // 检查子图像是否有效
-                if sub_img.width() == 0 || sub_img.height() == 0 {
+                if text_img.width() == 0 || text_img.height() == 0 {
                     error!("Invalid subimage with zero dimensions at index {}", i);
                     continue;
                 }
 
-                match rec.predict_with_confidence(sub_img) {
-                    Ok((text, confidence)) => {
+                match OcrEngineManager::recognize_text(text_img.clone()) {
+                    Ok(text) => {
                         results.push(TextBox {
                             text,
-                            confidence,
+                            confidence: 1.0, // 使用引擎管理器无法获取置信度，设为默认值
                             position: TextBoxPosition {
                                 left: rect.left(),
                                 top: rect.top(),
@@ -181,28 +170,16 @@ fn main() -> OcrResult<()> {
         }
 
         OutputMode::Text => {
-            // 简单文本模式
-            for (i, (_, sub_img)) in text_rects.iter().zip(text_images.iter()).enumerate() {
-                info!("Processing text region {} of {}", i + 1, text_rects.len());
+            info!("Processing in text mode...");
 
-                // 检查子图像是否有效
-                if sub_img.width() == 0 || sub_img.height() == 0 {
-                    error!("Invalid subimage with zero dimensions at index {}", i);
-                    continue;
-                }
+            // 直接使用完整的OCR处理
+            let texts = OcrEngineManager::process_ocr(img)?;
 
-                match rec.predict_str(sub_img) {
-                    Ok(text) => {
-                        println!("{}", text);
-                    }
-                    Err(e) => {
-                        error!("Failed to recognize text in region {}: {}", i, e);
-                    }
-                }
+            for text in texts {
+                println!("{}", text);
             }
         }
     }
 
-    info!("OCR process completed");
     Ok(())
 }

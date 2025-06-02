@@ -135,6 +135,47 @@ impl OcrEngine {
         })
     }
 
+    /// 创建并启动一个带有自定义配置和字节数据的OCR引擎实例
+    ///
+    /// Create and start a new OCR engine instance with custom configuration and byte data
+    pub fn new_with_config_and_bytes(
+        det_model_data: &[u8],
+        rec_model_data: &[u8],
+        keys_data: &[u8],
+        rect_border_size: u32,
+        merge_boxes: bool,
+        merge_threshold: i32,
+    ) -> OcrResult<Self> {
+        // 创建通信通道
+        let (tx, rx) = unbounded();
+
+        // 克隆字节数据，准备传递给工作线程
+        let det_data = det_model_data.to_vec();
+        let rec_data = rec_model_data.to_vec();
+        let keys = keys_data.to_vec();
+
+        // 创建工作线程，该线程将持有OCR模型
+        let worker_handle = thread::spawn(move || {
+            match Self::run_worker_with_bytes(
+                det_data,
+                rec_data,
+                keys,
+                rx,
+                rect_border_size,
+                merge_boxes,
+                merge_threshold,
+            ) {
+                Ok(_) => {}
+                Err(e) => eprintln!("OCR worker error: {}", e),
+            }
+        });
+
+        Ok(Self {
+            request_sender: tx,
+            worker_handle: Some(worker_handle),
+        })
+    }
+
     /// 在图像中检测文本区域
     ///
     /// Detect text regions in the image
@@ -336,6 +377,93 @@ impl OcrEngine {
 
         Ok(())
     }
+
+    /// 使用字节数据的工作线程的主处理函数
+    ///
+    /// Main processing function for the worker thread using byte data
+    fn run_worker_with_bytes(
+        det_model_data: Vec<u8>,
+        rec_model_data: Vec<u8>,
+        keys_data: Vec<u8>,
+        receiver: Receiver<OcrRequest>,
+        rect_border_size: u32,
+        merge_boxes: bool,
+        merge_threshold: i32,
+    ) -> OcrResult<()> {
+        // 直接从字节数据初始化模型
+        let mut det = Det::from_bytes(&det_model_data)?
+            .with_rect_border_size(rect_border_size)
+            .with_merge_boxes(merge_boxes)
+            .with_merge_threshold(merge_threshold);
+
+        let mut rec = Rec::from_bytes_with_keys(&rec_model_data, &keys_data)?;
+
+        // 处理请求循环
+        for request in receiver {
+            match request {
+                OcrRequest::DetectText {
+                    image,
+                    result_sender,
+                } => {
+                    let result = det.find_text_img(&image);
+                    // 发送结果，忽略接收端可能已关闭的错误
+                    let _ = result_sender.send(result);
+                }
+                OcrRequest::GetTextRects {
+                    image,
+                    result_sender,
+                } => {
+                    let result = det.find_text_rect(&image);
+                    let _ = result_sender.send(result);
+                }
+                OcrRequest::GetTextImages {
+                    image,
+                    result_sender,
+                } => {
+                    let result = det.find_text_img(&image);
+                    let _ = result_sender.send(result);
+                }
+                OcrRequest::RecognizeText {
+                    image,
+                    result_sender,
+                } => {
+                    let result = rec.predict_str(&image);
+                    let _ = result_sender.send(result);
+                }
+                OcrRequest::ProcessOcr {
+                    image,
+                    result_sender,
+                } => {
+                    // 先检测文本区域
+                    match det.find_text_img(&image) {
+                        Ok(text_images) => {
+                            // 识别每个文本区域
+                            let mut results = Vec::with_capacity(text_images.len());
+                            for text_img in text_images {
+                                match rec.predict_str(&text_img) {
+                                    Ok(text) => results.push(text),
+                                    Err(e) => {
+                                        let _ = result_sender.send(Err(e));
+                                        break;
+                                    }
+                                }
+                            }
+                            let _ = result_sender.send(Ok(results));
+                        }
+                        Err(e) => {
+                            let _ = result_sender.send(Err(e));
+                        }
+                    }
+                }
+                OcrRequest::Shutdown => {
+                    // 收到关闭请求，退出循环
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Drop for OcrEngine {
@@ -401,6 +529,39 @@ impl OcrEngineManager {
             det_model_path,
             rec_model_path,
             keys_path,
+            rect_border_size,
+            merge_boxes,
+            merge_threshold,
+        )?;
+
+        // 获取或初始化全局实例
+        let instance = INSTANCE.get_or_init(|| Arc::new(Mutex::new(None)));
+
+        // 更新引擎实例
+        let mut guard = instance.lock().map_err(|_| {
+            OcrError::EngineError("Failed to acquire lock on OCR engine manager".to_string())
+        })?;
+
+        *guard = Some(engine);
+
+        Ok(())
+    }
+
+    /// 使用自定义配置和字节数据初始化全局OCR引擎
+    ///
+    /// Initialize the global OCR engine with custom configuration and byte data
+    pub fn initialize_with_config_and_bytes(
+        det_model_data: &[u8],
+        rec_model_data: &[u8],
+        keys_data: &[u8],
+        rect_border_size: u32,
+        merge_boxes: bool,
+        merge_threshold: i32,
+    ) -> OcrResult<()> {
+        let engine = OcrEngine::new_with_config_and_bytes(
+            det_model_data,
+            rec_model_data,
+            keys_data,
             rect_border_size,
             merge_boxes,
             merge_threshold,
