@@ -438,3 +438,11 @@ impl Det {
         }
     }
 }
+
+impl Drop for Det {
+    fn drop(&mut self) {
+        if let Some(session) = self.session.take() {
+            drop(session);
+        }
+    }
+}

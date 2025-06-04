@@ -320,3 +320,11 @@ impl Rec {
         Ok(final_results)
     }
 }
+
+impl Drop for Rec {
+    fn drop(&mut self) {
+        if let Some(session) = self.session.take() {
+            drop(session);
+        }
+    }
+}
