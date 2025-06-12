@@ -18,7 +18,7 @@ fn main() -> OcrResult<()> {
     OcrEngineManager::initialize_with_config(
         "./models/ch_PP-OCRv4_det_infer.mnn",
         "./models/ch_PP-OCRv4_rec_infer.mnn",
-        "./models/ppocr_keys_v1.txt",
+        "./models/ppocr_keys_v4.txt",
         12,
         false,
         1,

@@ -29,35 +29,71 @@ jobs:
     strategy:
       matrix:
         include:
-          # 现有的amd64架构
+          # amd64架构 - 两个版本
           - os: ubuntu-latest
             artifact_name: ocr
-            asset_name: ocr-linux-amd64
+            asset_name: ocr-v4-linux-amd64
             target: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            artifact_name: ocr.exe
-            asset_name: ocr-windows-amd64.exe
-            target: x86_64-pc-windows-msvc
-          - os: macos-latest
-            artifact_name: ocr
-            asset_name: ocr-macos-amd64
-            target: x86_64-apple-darwin
-          
-          # 添加arm64架构支持
+            features: ""
           - os: ubuntu-latest
             artifact_name: ocr
-            asset_name: ocr-linux-arm64
-            target: aarch64-unknown-linux-gnu
-          - os: macos-latest
-            artifact_name: ocr
-            asset_name: ocr-macos-arm64
-            target: aarch64-apple-darwin
-          
-          # 添加32位架构支持
+            asset_name: ocr-v5-linux-amd64
+            target: x86_64-unknown-linux-gnu
+            features: "--features v5"
           - os: windows-latest
             artifact_name: ocr.exe
-            asset_name: ocr-windows-x86.exe
+            asset_name: ocr-v4-windows-amd64.exe
+            target: x86_64-pc-windows-msvc
+            features: ""
+          - os: windows-latest
+            artifact_name: ocr.exe
+            asset_name: ocr-v5-windows-amd64.exe
+            target: x86_64-pc-windows-msvc
+            features: "--features v5"
+          - os: macos-latest
+            artifact_name: ocr
+            asset_name: ocr-v4-macos-amd64
+            target: x86_64-apple-darwin
+            features: ""
+          - os: macos-latest
+            artifact_name: ocr
+            asset_name: ocr-v5-macos-amd64
+            target: x86_64-apple-darwin
+            features: "--features v5"
+          
+          # arm64架构 - 两个版本
+          - os: ubuntu-latest
+            artifact_name: ocr
+            asset_name: ocr-v4-linux-arm64
+            target: aarch64-unknown-linux-gnu
+            features: ""
+          - os: ubuntu-latest
+            artifact_name: ocr
+            asset_name: ocr-v5-linux-arm64
+            target: aarch64-unknown-linux-gnu
+            features: "--features v5"
+          - os: macos-latest
+            artifact_name: ocr
+            asset_name: ocr-v4-macos-arm64
+            target: aarch64-apple-darwin
+            features: ""
+          - os: macos-latest
+            artifact_name: ocr
+            asset_name: ocr-v5-macos-arm64
+            target: aarch64-apple-darwin
+            features: "--features v5"
+          
+          # 32位架构 - 两个版本
+          - os: windows-latest
+            artifact_name: ocr.exe
+            asset_name: ocr-v4-windows-x86.exe
             target: i686-pc-windows-msvc
+            features: ""
+          - os: windows-latest
+            artifact_name: ocr.exe
+            asset_name: ocr-v5-windows-x86.exe
+            target: i686-pc-windows-msvc
+            features: "--features v5"
     
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +125,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin ocr --target ${{ matrix.target }}
+          args: --release --bin ocr --target ${{ matrix.target }} ${{ matrix.features }}
       
       - name: Rename Binary
         shell: bash

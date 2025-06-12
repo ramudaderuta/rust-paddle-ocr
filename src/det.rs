@@ -184,14 +184,32 @@ impl Det {
             self.session = Some(session);
         }
 
+        // 获取输入输出张量列表，然后取第一个
+        let (input_tensor_info, output_tensor_info) = {
+            let session = self.session.as_ref().unwrap();
+            let inputs = self.interpreter.inputs(session);
+            let outputs = self.interpreter.outputs(session);
+
+            // 获取第一个输入和输出张量的信息
+            let input_info = inputs.iter().next().unwrap();
+            let output_info = outputs.iter().next().unwrap();
+
+            (
+                input_info.name().to_string(),
+                output_info.name().to_string(),
+            )
+        };
+
         // 创建会话的副本，这样就不需要同时借用self.session和self.interpreter
         let input_shape = input.shape();
 
         // 获取输入张量并调整大小
         {
             let session = self.session.as_mut().unwrap();
-            let mut input_tensor =
-                unsafe { self.interpreter.input_unresized::<f32>(session, "x")? };
+            let mut input_tensor = unsafe {
+                self.interpreter
+                    .input_unresized::<f32>(session, &input_tensor_info)?
+            };
 
             self.interpreter.resize_tensor(
                 &mut input_tensor,
@@ -212,7 +230,7 @@ impl Det {
         // 填充输入数据并执行推理
         let output_data = {
             let session = self.session.as_mut().unwrap();
-            let mut input_tensor = self.interpreter.input::<f32>(session, "x")?;
+            let mut input_tensor = self.interpreter.input::<f32>(session, &input_tensor_info)?;
 
             // 使用输入数据填充张量
             if let Some(flat_data) = input.as_slice() {
@@ -235,7 +253,9 @@ impl Det {
             self.interpreter.run_session(session)?;
 
             // 获取输出并等待计算完成
-            let output = self.interpreter.output::<f32>(session, "sigmoid_0.tmp_0")?;
+            let output = self
+                .interpreter
+                .output::<f32>(session, &output_tensor_info)?;
             output.wait(mnn::ffi::MapType::MAP_TENSOR_READ, true);
 
             // 从设备张量创建主机张量并获取数据
