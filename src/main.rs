@@ -4,10 +4,24 @@ use rust_paddle_ocr::{OcrEngineManager, OcrError, OcrResult};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-// 使用 include_bytes! 宏嵌入模型文件到二进制文件中
-static DET_MODEL: &[u8] = include_bytes!("../models/ch_PP-OCRv4_det_infer.mnn");
-static REC_MODEL: &[u8] = include_bytes!("../models/ch_PP-OCRv4_rec_infer.mnn");
-static KEYS_DATA: &[u8] = include_bytes!("../models/ppocr_keys_v1.txt");
+// 根据feature flag选择不同版本的模型
+#[cfg(feature = "v5")]
+mod models {
+    pub static DET_MODEL: &[u8] = include_bytes!("../models/PP-OCRv5_mobile_det.mnn");
+    pub static REC_MODEL: &[u8] = include_bytes!("../models/PP-OCRv5_mobile_rec.mnn");
+    pub static KEYS_DATA: &[u8] = include_bytes!("../models/ppocr_keys_v5.txt");
+    pub const VERSION: &str = "v5";
+}
+
+#[cfg(not(feature = "v5"))]
+mod models {
+    pub static DET_MODEL: &[u8] = include_bytes!("../models/ch_PP-OCRv4_det_infer.mnn");
+    pub static REC_MODEL: &[u8] = include_bytes!("../models/ch_PP-OCRv4_rec_infer.mnn");
+    pub static KEYS_DATA: &[u8] = include_bytes!("../models/ppocr_keys_v4.txt");
+    pub const VERSION: &str = "v4";
+}
+
+use models::{DET_MODEL, KEYS_DATA, REC_MODEL};
 
 // 定义输出模式
 #[derive(ValueEnum, Clone, Debug)]
@@ -33,6 +47,10 @@ struct Args {
     /// 是否显示详细日志
     #[arg(short, long)]
     verbose: bool,
+
+    /// 显示模型版本信息
+    #[arg(long)]
+    version_info: bool,
 }
 
 // 文本识别结果的JSON表示
@@ -54,6 +72,12 @@ struct TextBoxPosition {
 fn main() -> OcrResult<()> {
     // 解析命令行参数
     let args = Args::parse();
+
+    // 如果请求版本信息，则显示并退出
+    if args.version_info {
+        println!("PaddleOCR CLI - Model Version: PP-OCR{}", models::VERSION);
+        return Ok(());
+    }
 
     // 配置日志
     if args.verbose {
@@ -82,7 +106,10 @@ fn main() -> OcrResult<()> {
 
 fn process_ocr(args: &Args) -> OcrResult<()> {
     // 直接使用字节数据初始化OCR引擎
-    info!("Initializing OCR engine from embedded models...");
+    info!(
+        "Initializing OCR engine from embedded PP-OCR{} models...",
+        models::VERSION
+    );
     OcrEngineManager::initialize_with_config_and_bytes(
         DET_MODEL, REC_MODEL, KEYS_DATA, 12,    // rect_border_size
         false, // merge_boxes

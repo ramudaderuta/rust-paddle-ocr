@@ -10,7 +10,7 @@ fn main() -> OcrResult<()> {
     info!("Starting to initialize PaddleOCR models");
 
     info!("Loading text detection model...");
-    let mut det = match Det::from_file("./models/ch_PP-OCRv4_det_infer.mnn") {
+    let mut det = match Det::from_file("./models/PP-OCRv5_mobile_det.mnn") {
         Ok(det) => {
             let det = det
                 .with_rect_border_size(12)
@@ -27,8 +27,8 @@ fn main() -> OcrResult<()> {
 
     info!("Loading text recognition model...");
     let mut rec = match Rec::from_file(
-        "./models/ch_PP-OCRv4_rec_infer.mnn",
-        "./models/ppocr_keys_v1.txt",
+        "./models/PP-OCRv5_mobile_rec.mnn",
+        "./models/ppocr_keys_v5.txt",
     ) {
         Ok(rec) => rec,
         Err(e) => {

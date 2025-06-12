@@ -27,6 +27,10 @@ exclude = [
     "res/*",
 ]
 
+[features]
+default = []
+v5 = []
+
 [lib]
 crate-type = ["lib", "cdylib"]
 

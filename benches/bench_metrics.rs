@@ -13,7 +13,7 @@ fn setup() -> (Det, Rec, DynamicImage) {
 
     let rec = Rec::from_file(
         "./models/ch_PP-OCRv4_rec_infer.mnn",
-        "./models/ppocr_keys_v1.txt",
+        "./models/ppocr_keys_v4.txt",
     )
     .expect("Failed to load recognition model");
 

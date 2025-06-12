@@ -64,7 +64,10 @@ impl Rec {
     /// 从模型字节创建文本识别器，需要提供字符集文件路径
     ///
     /// Create a text recognizer from model bytes and character set file
-    pub fn from_bytes(model_bytes: impl AsRef<[u8]>, keys_path: impl AsRef<Path>) -> OcrResult<Self> {
+    pub fn from_bytes(
+        model_bytes: impl AsRef<[u8]>,
+        keys_path: impl AsRef<Path>,
+    ) -> OcrResult<Self> {
         let interpreter = Interpreter::from_bytes(model_bytes)?;
         let keys_content = std::fs::read_to_string(keys_path)?;
 
@@ -86,10 +89,14 @@ impl Rec {
     /// 从模型字节和字符集字节创建文本识别器
     ///
     /// Create a text recognizer from model bytes and character set bytes
-    pub fn from_bytes_with_keys(model_bytes: impl AsRef<[u8]>, keys_bytes: impl AsRef<[u8]>) -> OcrResult<Self> {
+    pub fn from_bytes_with_keys(
+        model_bytes: impl AsRef<[u8]>,
+        keys_bytes: impl AsRef<[u8]>,
+    ) -> OcrResult<Self> {
         let interpreter = Interpreter::from_bytes(model_bytes)?;
-        let keys_content = std::str::from_utf8(keys_bytes.as_ref())
-            .map_err(|e| crate::error::OcrError::IOError(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+        let keys_content = std::str::from_utf8(keys_bytes.as_ref()).map_err(|e| {
+            crate::error::OcrError::IOError(std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+        })?;
 
         let keys = " "
             .chars()
@@ -207,11 +214,29 @@ impl Rec {
             self.session = Some(session);
         }
 
+        // 获取输入输出张量列表，然后取第一个
+        let (input_tensor_info, output_tensor_info) = {
+            let session = self.session.as_ref().unwrap();
+            let inputs = self.interpreter.inputs(session);
+            let outputs = self.interpreter.outputs(session);
+
+            // 获取第一个输入和输出张量的信息
+            let input_info = inputs.iter().next().unwrap();
+            let output_info = outputs.iter().next().unwrap();
+
+            (
+                input_info.name().to_string(),
+                output_info.name().to_string(),
+            )
+        };
+
         let input_shape = input.shape();
         {
             let session = self.session.as_mut().unwrap();
-            let mut input_tensor =
-                unsafe { self.interpreter.input_unresized::<f32>(session, "x")? };
+            let mut input_tensor = unsafe {
+                self.interpreter
+                    .input_unresized::<f32>(session, &input_tensor_info)?
+            };
 
             self.interpreter.resize_tensor(
                 &mut input_tensor,
@@ -230,7 +255,7 @@ impl Rec {
 
         let (output_data, output_shape) = {
             let session = self.session.as_mut().unwrap();
-            let mut input_tensor = self.interpreter.input::<f32>(session, "x")?;
+            let mut input_tensor = self.interpreter.input::<f32>(session, &input_tensor_info)?;
 
             if let Some(flat_data) = input.as_slice() {
                 let mut host_tensor = input_tensor.create_host_tensor_from_device(false);
@@ -250,7 +275,7 @@ impl Rec {
 
             let output = self
                 .interpreter
-                .output::<f32>(session, "softmax_11.tmp_0")?;
+                .output::<f32>(session, &output_tensor_info)?;
             output.wait(mnn::ffi::MapType::MAP_TENSOR_READ, true);
 
             let shape = output.shape();
