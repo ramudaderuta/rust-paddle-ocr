@@ -38,7 +38,7 @@ fn main() -> OcrResult<()> {
     };
 
     info!("Loading image...");
-    let img = match image::open("./res/3.png") {
+    let img = match image::open("./res/4.png") {
         Ok(img) => {
             info!(
                 "Image loaded successfully, size: {}x{}",

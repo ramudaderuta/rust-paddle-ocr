@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-一个基于PaddleOCR模型的轻量级高效OCR（光学字符识别）Rust库。该库利用MNN推理框架提供高性能的文本检测和识别功能。
+一个基于PaddleOCR模型的轻量级高效OCR（光学字符识别）Rust库。该库利用MNN推理框架提供高性能的文本检测和识别功能，并提供完整的C API接口。
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
@@ -17,6 +17,8 @@
 - **最小依赖**：轻量级且易于集成
 - **可自定义**：针对不同用例的可调整参数
 - **命令行工具**：提供简单的命令行界面进行OCR识别
+- **C API支持**：提供完整的C语言接口，支持跨语言调用
+- **内存安全**：自动内存管理，防止内存泄漏
 
 ## 模型版本
 
@@ -69,7 +71,7 @@ branch = "main"
 
 ## 使用方式
 
-### 作为rust库使用
+### 作为Rust库使用
 
 可以灵活选择使用 PP-OCRv4 或 PP-OCRv5 模型,只需加载不同模型文件即可：
 
@@ -117,6 +119,128 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     Ok(())
 }
+```
+
+### 作为C库使用
+
+该库提供了完整的C API接口，可以在C/C++项目中使用：
+
+#### 编译C动态库
+
+```bash
+# 编译生成动态库
+cargo build --release
+
+# 生成的动态库位置（根据系统不同）：
+# Linux: target/release/librust_paddle_ocr.so
+# macOS: target/release/librust_paddle_ocr.dylib  
+# Windows: target/release/rust_paddle_ocr.dll
+
+# C头文件会自动生成到项目根目录：rocr.h
+```
+
+#### C API 使用示例
+
+```c
+#include "rocr.h"
+#include <stdio.h>
+
+int main() {
+    // 获取版本信息
+    printf("OCR库版本: %s\n", rocr_version());
+    
+    // 创建OCR引擎
+    ROCR_RocrHandle engine = rocr_create_engine(
+        "./models/PP-OCRv5_mobile_det.mnn",
+        "./models/PP-OCRv5_mobile_rec.mnn", 
+        "./models/ppocr_keys_v5.txt"
+    );
+    
+    if (engine == 0) {
+        printf("OCR引擎创建失败\n");
+        return 1;
+    }
+    
+    // 简单模式识别 - 只获取文本内容
+    struct ROCR_RocrSimpleResult simple_result = 
+        rocr_recognize_simple(engine, "./image.jpg");
+    
+    if (simple_result.STATUS == ROCR_RocrStatus_Success) {
+        printf("识别出 %zu 个文本:\n", simple_result.COUNT);
+        for (size_t i = 0; i < simple_result.COUNT; i++) {
+            printf("- %s\n", simple_result.TEXTS[i]);
+        }
+    }
+    
+    // 释放简单结果内存
+    rocr_free_simple_result(&simple_result);
+    
+    // 详细模式识别 - 获取文本和位置信息
+    struct ROCR_RocrResult detailed_result = 
+        rocr_recognize_detailed(engine, "./image.jpg");
+    
+    if (detailed_result.STATUS == ROCR_RocrStatus_Success) {
+        printf("详细识别出 %zu 个文本框:\n", detailed_result.COUNT);
+        for (size_t i = 0; i < detailed_result.COUNT; i++) {
+            struct ROCR_RocrTextBox* box = &detailed_result.BOXES[i];
+            printf("文本: %s\n", box->TEXT);
+            printf("置信度: %.2f\n", box->CONFIDENCE);
+            printf("位置: (%d, %d, %u, %u)\n", 
+                   box->LEFT, box->TOP, box->WIDTH, box->HEIGHT);
+        }
+    }
+    
+    // 释放详细结果内存
+    rocr_free_result(&detailed_result);
+    
+    // 销毁引擎
+    rocr_destroy_engine(engine);
+    
+    // 清理所有资源
+    rocr_cleanup();
+    
+    return 0;
+}
+```
+
+#### 编译和运行C Demo
+
+项目提供了完整的C语言演示程序：
+
+```bash
+# 进入demo目录
+cd demo
+
+# 编译C demo（Linux/macOS）
+gcc -o c_demo c_demo.c -L../target/release -lrust_paddle_ocr -ldl
+
+# 运行demo
+./c_demo
+
+# Windows编译示例
+# gcc -o c_demo.exe c_demo.c -L../target/release -lrust_paddle_ocr -lws2_32 -luserenv
+```
+
+#### C API 高级配置
+
+```c
+// 使用自定义配置创建引擎
+ROCR_RocrHandle engine = rocr_create_engine_with_config(
+    det_model_path,
+    rec_model_path, 
+    keys_path,
+    12,    // rect_border_size - 边界框扩展尺寸
+    0,     // merge_boxes - 是否合并文本框 (0=false, 1=true)
+    1      // merge_threshold - 合并阈值
+);
+
+// 使用内存中的模型数据创建引擎
+ROCR_RocrHandle engine = rocr_create_engine_with_bytes(
+    det_model_data, det_model_size,
+    rec_model_data, rec_model_size,
+    keys_data, keys_size,
+    12, 0, 1
+);
 ```
 
 ## 命令行工具
@@ -179,7 +303,9 @@ cargo build --release --features v5
 
 ## API 参考
 
-### 文本检测 (Det)
+### Rust API
+
+#### 文本检测 (Det)
 
 ```rust
 // 创建新的检测器
@@ -198,7 +324,7 @@ let det = det
     .with_merge_threshold(1);
 ```
 
-### 文本识别 (Rec)
+#### 文本识别 (Rec)
 
 ```rust
 // 创建新的识别器
@@ -216,29 +342,94 @@ let rec = rec
     .with_punct_min_score(0.1);    // 设置标点符号的最低置信度
 ```
 
-## 性能优化
+### C API
 
-该库包含几项优化：
-- 高效的张量管理
-- 智能框合并用于文本检测
-- 自适应图像预处理
-- 可配置的置信度阈值
+#### 核心函数
 
-## 示例结果
+```c
+// 引擎管理
+ROCR_RocrHandle rocr_create_engine(const char* det_model, 
+                                   const char* rec_model, 
+                                   const char* keys_file);
+ROCR_RocrHandle rocr_create_engine_with_config(...);
+ROCR_RocrHandle rocr_create_engine_with_bytes(...);
+enum ROCR_RocrStatus rocr_destroy_engine(ROCR_RocrHandle handle);
 
-以下是一些展示库实际效果的示例结果：
+// 文本识别
+struct ROCR_RocrSimpleResult rocr_recognize_simple(ROCR_RocrHandle handle, 
+                                                   const char* image_path);
+struct ROCR_RocrResult rocr_recognize_detailed(ROCR_RocrHandle handle, 
+                                               const char* image_path);
 
-### 示例 1
-![原始图像 1](res/1.png)
-![OCR 结果 1](res/1_ocr_result.png)
+// 内存管理
+void rocr_free_simple_result(struct ROCR_RocrSimpleResult* result);
+void rocr_free_result(struct ROCR_RocrResult* result);
+void rocr_cleanup(void);
 
-### 示例 2
-![原始图像 2](res/2.png)
-![OCR 结果 2](res/2_ocr_result.png)
+// 工具函数
+const char* rocr_version(void);
+```
 
-### 示例 3
-![原始图像 3](res/3.png)
-![OCR 结果 3](res/3_ocr_result.png)
+#### 数据结构
+
+```c
+// 状态码
+typedef enum ROCR_RocrStatus {
+    ROCR_RocrStatus_Success = 0,
+    ROCR_RocrStatus_InitError = 1,
+    ROCR_RocrStatus_FileNotFound = 2,
+    ROCR_RocrStatus_ImageLoadError = 3,
+    ROCR_RocrStatus_ProcessError = 4,
+    ROCR_RocrStatus_MemoryError = 5,
+    ROCR_RocrStatus_InvalidParam = 6,
+    ROCR_RocrStatus_NotInitialized = 7,
+} ROCR_RocrStatus;
+
+// 文本框
+typedef struct ROCR_RocrTextBox {
+    char* TEXT;              // 识别的文本
+    float CONFIDENCE;        // 置信度 (0.0-1.0)
+    int LEFT;               // 左边界
+    int TOP;                // 上边界  
+    unsigned int WIDTH;     // 宽度
+    unsigned int HEIGHT;    // 高度
+} ROCR_RocrTextBox;
+
+// 详细结果
+typedef struct ROCR_RocrResult {
+    enum ROCR_RocrStatus STATUS;     // 状态码
+    size_t COUNT;                    // 文本框数量
+    struct ROCR_RocrTextBox* BOXES;  // 文本框数组
+} ROCR_RocrResult;
+
+// 简单结果
+typedef struct ROCR_RocrSimpleResult {
+    enum ROCR_RocrStatus STATUS;     // 状态码
+    size_t COUNT;                    // 文本数量
+    char** TEXTS;                    // 文本数组
+} ROCR_RocrSimpleResult;
+```
+
+#### 内存管理注意事项
+
+1. **结果释放**：必须调用相应的释放函数释放结果内存
+2. **引擎销毁**：使用完毕后必须销毁引擎实例
+3. **全局清理**：程序结束前调用 `rocr_cleanup()` 清理所有资源
+4. **线程安全**：引擎实例不是线程安全的，多线程使用需要额外同步
+
+## 演示程序
+
+项目在 `demo/` 目录下提供了完整的演示程序：
+
+- **C Demo** (`demo/c_demo.c`)：完整的C语言调用示例，展示简单和详细模式的使用
+- **模型文件**：`models/` 目录包含示例模型文件
+- **测试图片**：`res/` 目录包含测试图片
+
+运行演示：
+```bash
+# 进入demo目录并运行
+cd demo && ./c_demo
+```
 
 ## 许可证
 
