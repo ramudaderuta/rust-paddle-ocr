@@ -20,7 +20,7 @@ pub struct Det {
 impl Det {
     /// 默认边界尺寸常量
     /// Default rectangle border size constant
-    pub const RECT_BORDER_SIZE: u32 = 50;
+    pub const RECT_BORDER_SIZE: u32 = 10;
 
     /// 二值化阈值常量
     /// Binary threshold constant
@@ -32,7 +32,7 @@ impl Det {
 
     /// 默认的边界框合并阈值
     /// Default threshold for merging text boxes
-    pub const DEFAULT_MERGE_THRESHOLD: i32 = 10;
+    pub const DEFAULT_MERGE_THRESHOLD: i32 = 1;
 
     /// 创建新的文本检测器实例
     ///
@@ -43,7 +43,7 @@ impl Det {
             interpreter,
             session: None,
             rect_border_size: Self::RECT_BORDER_SIZE,
-            merge_boxes: true, // 默认开启边界框合并
+            merge_boxes: false,
             merge_threshold: Self::DEFAULT_MERGE_THRESHOLD,
         }
     }
@@ -57,7 +57,7 @@ impl Det {
             interpreter,
             session: None,
             rect_border_size: Self::RECT_BORDER_SIZE,
-            merge_boxes: true,
+            merge_boxes: false,
             merge_threshold: Self::DEFAULT_MERGE_THRESHOLD,
         })
     }
@@ -71,7 +71,7 @@ impl Det {
             interpreter,
             session: None,
             rect_border_size: Self::RECT_BORDER_SIZE,
-            merge_boxes: true,
+            merge_boxes: false,
             merge_threshold: Self::DEFAULT_MERGE_THRESHOLD,
         })
     }

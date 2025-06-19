@@ -78,7 +78,15 @@ pub mod engine;
 pub mod error;
 pub mod rec;
 
+// C API 模块
+// C API module
+pub mod capi;
+
 pub use det::Det;
 pub use engine::{OcrEngine, OcrEngineManager};
 pub use error::{OcrError, OcrResult};
 pub use rec::Rec;
+
+// 重新导出 C API
+// Re-export C API
+pub use capi::*;

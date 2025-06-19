@@ -90,7 +90,7 @@ impl OcrEngine {
             rec_model_path,
             keys_path,
             Det::RECT_BORDER_SIZE,
-            true,
+            false,
             Det::DEFAULT_MERGE_THRESHOLD,
         )
     }
