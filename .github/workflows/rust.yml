@@ -94,6 +94,11 @@ jobs:
           override: true
           target: ${{ matrix.target }}
       
+      - name: Install Cross for Windows builds
+        if: matrix.os == 'windows-latest'
+        run: cargo install cross --git https://github.com/cross-rs/cross
+        shell: bash
+      
       - name: Install Cross-Compilation Dependencies
         if: contains(matrix.target, 'aarch64-unknown-linux-gnu')
         run: |
@@ -110,20 +115,32 @@ jobs:
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
         shell: bash
       
-      - name: Build
+      - name: Build (Windows with Cross)
+        if: matrix.os == 'windows-latest'
+        run: cross build --verbose --target ${{ matrix.target }} ${{ matrix.features }}
+        shell: bash
+      
+      - name: Build (Non-Windows)
+        if: matrix.os != 'windows-latest'
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --verbose --target ${{ matrix.target }} ${{ matrix.features }}
       
       - name: Run tests
-        if: contains(matrix.target, 'x86_64')
+        if: contains(matrix.target, 'x86_64') && matrix.os != 'windows-latest'
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --verbose --target ${{ matrix.target }} ${{ matrix.features }}
       
-      - name: Build Release Binary
+      - name: Build Release Binary (Windows with Cross)
+        if: matrix.os == 'windows-latest'
+        run: cross build --release --bin ocr --target ${{ matrix.target }} ${{ matrix.features }}
+        shell: bash
+
+      - name: Build Release Binary (Non-Windows)
+        if: matrix.os != 'windows-latest'
         uses: actions-rs/cargo@v1
         with:
           command: build
