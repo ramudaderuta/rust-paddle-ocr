@@ -829,8 +829,8 @@ if __name__ == "__main__":
     else:
         # 原有的示例代码
         # 使用示例
-        det_model = "models/PP-OCRv5_mobile_det.mnn"
-        rec_model = "models/PP-OCRv5_mobile_rec.mnn"
+        det_model = "models/PP-OCRv5_mobile_det_fp16.mnn"
+        rec_model = "models/PP-OCRv5_mobile_rec_fp16.mnn"
         keys_file = "./models/ppocr_keys_v5.txt"
         image_file = "./res/1.png"
         
