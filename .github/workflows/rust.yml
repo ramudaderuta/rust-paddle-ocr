@@ -105,6 +105,23 @@ jobs:
           override: true
           target: ${{ matrix.target }}
       
+      - name: Install LLVM and Clang (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "18.0"
+          directory: ${{ runner.temp }}/llvm
+      
+      - name: Set Windows Environment Variables
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "LIBCLANG_PATH=${{ runner.temp }}/llvm/bin" >> $env:GITHUB_ENV
+          echo "LLVM_CONFIG_PATH=${{ runner.temp }}/llvm/bin/llvm-config" >> $env:GITHUB_ENV
+          echo "CC=clang" >> $env:GITHUB_ENV
+          echo "CXX=clang++" >> $env:GITHUB_ENV
+          echo "_CL_=/D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH" >> $env:GITHUB_ENV
+        shell: pwsh
+      
       - name: Install Cross-Compilation Dependencies
         if: contains(matrix.target, 'aarch64-unknown-linux-gnu')
         run: |
@@ -126,6 +143,8 @@ jobs:
         with:
           command: build
           args: --release --bin ocr --target ${{ matrix.target }} ${{ matrix.features }}
+        env:
+          RUSTFLAGS: ${{ matrix.os == 'windows-latest' && '-C target-feature=+crt-static' || '' }}
       
       - name: Rename Binary
         shell: bash
