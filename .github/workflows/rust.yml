@@ -94,10 +94,19 @@ jobs:
           override: true
           target: ${{ matrix.target }}
       
-      - name: Install Cross for Windows builds
+      - name: Setup Windows Build Environment
         if: matrix.os == 'windows-latest'
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: |
+          echo "RUSTFLAGS=-C target-feature=+crt-static" >> $GITHUB_ENV
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $GITHUB_ENV
         shell: bash
+      
+      - name: Install LLVM for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install llvm --version=18.1.8 -y
+          echo "C:\Program Files\LLVM\bin" >> $GITHUB_PATH
+        shell: powershell
       
       - name: Install Cross-Compilation Dependencies
         if: contains(matrix.target, 'aarch64-unknown-linux-gnu')
@@ -115,13 +124,7 @@ jobs:
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
         shell: bash
       
-      - name: Build (Windows with Cross)
-        if: matrix.os == 'windows-latest'
-        run: cross build --verbose --target ${{ matrix.target }} ${{ matrix.features }}
-        shell: bash
-      
-      - name: Build (Non-Windows)
-        if: matrix.os != 'windows-latest'
+      - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
@@ -134,13 +137,7 @@ jobs:
           command: test
           args: --verbose --target ${{ matrix.target }} ${{ matrix.features }}
       
-      - name: Build Release Binary (Windows with Cross)
-        if: matrix.os == 'windows-latest'
-        run: cross build --release --bin ocr --target ${{ matrix.target }} ${{ matrix.features }}
-        shell: bash
-
-      - name: Build Release Binary (Non-Windows)
-        if: matrix.os != 'windows-latest'
+      - name: Build Release Binary
         uses: actions-rs/cargo@v1
         with:
           command: build
@@ -160,6 +157,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
+          files: ${{ matrix.asset_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           files: ${{ matrix.asset_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
