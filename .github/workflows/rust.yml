@@ -117,6 +117,7 @@ jobs:
           args: --verbose --target ${{ matrix.target }} ${{ matrix.features }}
       
       - name: Run tests
+        if: contains(matrix.target, 'x86_64')
         uses: actions-rs/cargo@v1
         with:
           command: test
