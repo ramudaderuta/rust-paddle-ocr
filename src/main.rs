@@ -7,8 +7,8 @@ use std::path::PathBuf;
 // 根据feature flag选择不同版本的模型
 #[cfg(feature = "v5")]
 mod models {
-    pub static DET_MODEL: &[u8] = include_bytes!("../models/PP-OCRv5_mobile_det.mnn");
-    pub static REC_MODEL: &[u8] = include_bytes!("../models/PP-OCRv5_mobile_rec.mnn");
+    pub static DET_MODEL: &[u8] = include_bytes!("../models/PP-OCRv5_mobile_det_fp16.mnn");
+    pub static REC_MODEL: &[u8] = include_bytes!("../models/PP-OCRv5_mobile_rec_fp16.mnn");
     pub static KEYS_DATA: &[u8] = include_bytes!("../models/ppocr_keys_v5.txt");
     pub const VERSION: &str = "v5";
 }

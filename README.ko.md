@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-PaddleOCR 모델을 기반으로 Rust로 구현된 경량 및 효율적인 OCR(광학 문자 인식) 라이브러리입니다. 이 라이브러리는 MNN 추론 프레임워크를 활용하여 고성능 텍스트 감지 및 인식 기능을 제공하며, 완전한 C API 인터페이스를 제공합니다.
+PaddleOCR 모델을 기반으로 Rust로 구현된 경량 및 효율적인 OCR(광학 문자 인식) 라이브러리입니다. 이 라이브러리는 MNN 추론 프레임워크를 활용하여 고성능 텍스트 감지 및 인식 기능을 제공합니다.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
@@ -17,12 +17,10 @@ PaddleOCR 모델을 기반으로 Rust로 구현된 경량 및 효율적인 OCR(�
 - **최소한의 의존성**: 경량이며 쉽게 통합 가능
 - **사용자 정의 가능**: 다양한 사용 사례에 맞게 조정 가능한 매개변수
 - **명령줄 도구**: OCR 인식을 위한 간단한 명령줄 인터페이스
-- **C API 지원**: 완전한 C 언어 인터페이스 제공으로 다양한 언어에서 호출 가능
-- **메모리 안전성**: 자동 메모리 관리로 메모리 누수 방지
 
 ## 모델 버전
 
-이 라이브러리는 두 가지 PaddleOCR 모델 버전을 지원합니다:
+이 라이브러리는 세 가지 PaddleOCR 모델 버전을 지원합니다:
 
 ### PP-OCRv4
 - **안정 버전**: 충분히 검증되었으며 호환성이 우수함
@@ -44,6 +42,77 @@ PaddleOCR 모델을 기반으로 Rust로 구현된 경량 및 효율적인 OCR(�
   - 감지 모델: `PP-OCRv5_mobile_det.mnn`
   - 인식 모델: `PP-OCRv5_mobile_rec.mnn`
   - 문자 집합: `ppocr_keys_v5.txt`
+
+### PP-OCRv5 FP16 ⭐️ 신규
+- **효율 버전**: 정확도를 유지하면서 추론 속도를 높이고 메모리 사용량을 줄임
+- **적용 시나리오**: 성능과 메모리 사용량이 중요한 시나리오
+- **성능 향상**:
+  - 추론 속도 약 9% 향상
+  - 메모리 사용량 약 8% 감소
+  - 모델 크기 절반으로 축소
+- **모델 파일**:
+  - 감지 모델: `PP-OCRv5_mobile_det_fp16.mnn`
+  - 인식 모델: `PP-OCRv5_mobile_rec_fp16.mnn`
+  - 문자 집합: `ppocr_keys_v5.txt`
+
+### 모델 성능 비교
+
+| 특징                | PP-OCRv4 | PP-OCRv5 | PP-OCRv5 FP16 |
+|---------------------|----------|----------|---------------|
+| 문자 유형 지원      | 중국어, 영어 | 간체 중국어, 번체 중국어, 영어, 일본어, 중국어 병음 | 간체 중국어, 번체 중국어, 영어, 일본어, 중국어 병음 |
+| 손글씨 인식        | 기본 지원 | 현저히 향상 | 현저히 향상 |
+| 세로 텍스트        | 기본 지원 | 최적화 향상 | 최적화 향상 |
+| 생소한 문자 인식    | 제한적 지원 | 강화된 인식 | 강화된 인식 |
+| 추론 속도 (FPS)    | 1.1      | 1.2      | 1.2 |
+| 메모리 사용량 (피크)| 422.22MB | 388.41MB | 388.41MB |
+| 모델 크기          | 표준     | 표준     | 절반으로 축소 |
+| 권장 시나리오      | 일반 문서 | 복잡하고 다양한 시나리오 | 고성능 시나리오 |
+
+### PP-OCRv5 FP16 테스트 데이터
+
+#### 표준 모델
+```
+============================================================
+테스트 보고서: 추론 속도 테스트
+============================================================
+총 시간: 44.23초
+평균 추론 시간: 884.64밀리초
+최고 추론 시간: 744.99밀리초
+최저 추론 시간: 954.03밀리초
+성공 횟수: 50
+실패 횟수: 0
+추론 속도: 1.1 FPS
+메모리 사용량 - 시작: 14.94MB
+메모리 사용량 - 종료: 422.22MB
+메모리 사용량 - 피크: 422.22MB
+메모리 변화: +407.28MB
+```
+
+#### FP16 모델
+```
+============================================================
+테스트 보고서: 추론 속도 테스트
+============================================================
+총 시간: 43.33초
+평균 추론 시간: 866.66밀리초
+최고 추론 시간: 719.41밀리초
+최저 추론 시간: 974.93밀리초
+성공 횟수: 50
+실패 횟수: 0
+추론 속도: 1.2 FPS
+메모리 사용량 - 시작: 15.70MB
+메모리 사용량 - 종료: 388.41MB
+메모리 사용량 - 피크: 388.41MB
+메모리 변화: +372.70MB
+```
+
+### 테스트 방법
+
+다음 명령어를 사용하여 테스트를 실행하고 성능 데이터를 검증할 수 있습니다(Mac Mini M4 기준 테스트 데이터):
+
+```bash
+python test_ffi.py test
+```
 
 ## 설치
 
@@ -120,128 +189,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### C 라이브러리로 사용
-
-이 라이브러리는 완전한 C API 인터페이스를 제공하여 C/C++ 프로젝트에서 사용할 수 있습니다:
-
-#### C 동적 라이브러리 컴파일
-
-```bash
-# 동적 라이브러리 컴파일
-cargo build --release
-
-# 생성된 동적 라이브러리 위치 (시스템에 따라 다름):
-# Linux: target/release/librust_paddle_ocr.so
-# macOS: target/release/librust_paddle_ocr.dylib  
-# Windows: target/release/rust_paddle_ocr.dll
-
-# C 헤더 파일이 프로젝트 루트 디렉토리에 자동 생성됩니다: rocr.h
-```
-
-#### C API 사용 예시
-
-```c
-#include "rocr.h"
-#include <stdio.h>
-
-int main() {
-    // 버전 정보 가져오기
-    printf("OCR 라이브러리 버전: %s\n", rocr_version());
-    
-    // OCR 엔진 생성
-    ROCR_RocrHandle engine = rocr_create_engine(
-        "./models/PP-OCRv5_mobile_det.mnn",
-        "./models/PP-OCRv5_mobile_rec.mnn", 
-        "./models/ppocr_keys_v5.txt"
-    );
-    
-    if (engine == 0) {
-        printf("OCR 엔진 생성 실패\n");
-        return 1;
-    }
-    
-    // 간단 모드 인식 - 텍스트 내용만 가져오기
-    struct ROCR_RocrSimpleResult simple_result = 
-        rocr_recognize_simple(engine, "./image.jpg");
-    
-    if (simple_result.STATUS == ROCR_RocrStatus_Success) {
-        printf("%zu개의 텍스트 인식됨:\n", simple_result.COUNT);
-        for (size_t i = 0; i < simple_result.COUNT; i++) {
-            printf("- %s\n", simple_result.TEXTS[i]);
-        }
-    }
-    
-    // 간단 결과 메모리 해제
-    rocr_free_simple_result(&simple_result);
-    
-    // 상세 모드 인식 - 텍스트와 위치 정보 가져오기
-    struct ROCR_RocrResult detailed_result = 
-        rocr_recognize_detailed(engine, "./image.jpg");
-    
-    if (detailed_result.STATUS == ROCR_RocrStatus_Success) {
-        printf("%zu개의 텍스트 상자 상세 인식됨:\n", detailed_result.COUNT);
-        for (size_t i = 0; i < detailed_result.COUNT; i++) {
-            struct ROCR_RocrTextBox* box = &detailed_result.BOXES[i];
-            printf("텍스트: %s\n", box->TEXT);
-            printf("신뢰도: %.2f\n", box->CONFIDENCE);
-            printf("위치: (%d, %d, %u, %u)\n", 
-                   box->LEFT, box->TOP, box->WIDTH, box->HEIGHT);
-        }
-    }
-    
-    // 상세 결과 메모리 해제
-    rocr_free_result(&detailed_result);
-    
-    // 엔진 소멸
-    rocr_destroy_engine(engine);
-    
-    // 모든 리소스 정리
-    rocr_cleanup();
-    
-    return 0;
-}
-```
-
-#### C 데모 컴파일 및 실행
-
-프로젝트에서 완전한 C 언어 데모 프로그램을 제공합니다:
-
-```bash
-# demo 디렉토리로 이동
-cd demo
-
-# C 데모 컴파일 (Linux/macOS)
-gcc -o c_demo c_demo.c -L../target/release -lrust_paddle_ocr -ldl
-
-# 데모 실행
-./c_demo
-
-# Windows 컴파일 예시
-# gcc -o c_demo.exe c_demo.c -L../target/release -lrust_paddle_ocr -lws2_32 -luserenv
-```
-
-#### C API 고급 설정
-
-```c
-// 사용자 정의 설정으로 엔진 생성
-ROCR_RocrHandle engine = rocr_create_engine_with_config(
-    det_model_path,
-    rec_model_path, 
-    keys_path,
-    12,    // rect_border_size - 경계 상자 확장 크기
-    0,     // merge_boxes - 텍스트 상자 병합 여부 (0=false, 1=true)
-    1      // merge_threshold - 병합 임계값
-);
-
-// 메모리 내 모델 데이터로 엔진 생성
-ROCR_RocrHandle engine = rocr_create_engine_with_bytes(
-    det_model_data, det_model_size,
-    rec_model_data, rec_model_size,
-    keys_data, keys_size,
-    12, 0, 1
-);
-```
-
 ## 명령줄 도구
 
 이 라이브러리는 직접 OCR 인식을 수행할 수 있는 내장 명령줄 도구를 제공합니다:
@@ -302,9 +249,7 @@ cargo build --release --features v5
 
 ## API 참조
 
-### Rust API
-
-#### 텍스트 감지 (Det)
+### 텍스트 감지 (Det)
 
 ```rust
 // 새 감지기 생성
@@ -323,7 +268,7 @@ let det = det
     .with_merge_threshold(1);       // 상자 병합 임계값 설정
 ```
 
-#### 텍스트 인식 (Rec)
+### 텍스트 인식 (Rec)
 
 ```rust
 // 새 인식기 생성
@@ -341,94 +286,29 @@ let rec = rec
     .with_punct_min_score(0.1);    // 문장 부호의 최소 신뢰도 설정
 ```
 
-### C API
+## 성능 최적화
 
-#### 핵심 함수
+이 라이브러리는 다음과 같은 여러 최적화를 포함합니다:
+- 효율적인 텐서 관리
+- 텍스트 감지를 위한 스마트 박스 병합
+- 적응형 이미지 전처리
+- 구성 가능한 신뢰도 임계값
 
-```c
-// 엔진 관리
-ROCR_RocrHandle rocr_create_engine(const char* det_model, 
-                                   const char* rec_model, 
-                                   const char* keys_file);
-ROCR_RocrHandle rocr_create_engine_with_config(...);
-ROCR_RocrHandle rocr_create_engine_with_bytes(...);
-enum ROCR_RocrStatus rocr_destroy_engine(ROCR_RocrHandle handle);
+## 실행 예시
 
-// 텍스트 인식
-struct ROCR_RocrSimpleResult rocr_recognize_simple(ROCR_RocrHandle handle, 
-                                                   const char* image_path);
-struct ROCR_RocrResult rocr_recognize_detailed(ROCR_RocrHandle handle, 
-                                               const char* image_path);
+다음은 이 라이브러리의 실행 예시입니다:
 
-// 메모리 관리
-void rocr_free_simple_result(struct ROCR_RocrSimpleResult* result);
-void rocr_free_result(struct ROCR_RocrResult* result);
-void rocr_cleanup(void);
+### 예시 1
+![원본 이미지 1](res/1.png)
+![OCR 결과 1](res/1_ocr_result.png)
 
-// 유틸리티 함수
-const char* rocr_version(void);
-```
+### 예시 2
+![원본 이미지 2](res/2.png)
+![OCR 결과 2](res/2_ocr_result.png)
 
-#### 데이터 구조
-
-```c
-// 상태 코드
-typedef enum ROCR_RocrStatus {
-    ROCR_RocrStatus_Success = 0,
-    ROCR_RocrStatus_InitError = 1,
-    ROCR_RocrStatus_FileNotFound = 2,
-    ROCR_RocrStatus_ImageLoadError = 3,
-    ROCR_RocrStatus_ProcessError = 4,
-    ROCR_RocrStatus_MemoryError = 5,
-    ROCR_RocrStatus_InvalidParam = 6,
-    ROCR_RocrStatus_NotInitialized = 7,
-} ROCR_RocrStatus;
-
-// 텍스트 상자
-typedef struct ROCR_RocrTextBox {
-    char* TEXT;              // 인식된 텍스트
-    float CONFIDENCE;        // 신뢰도 (0.0-1.0)
-    int LEFT;               // 왼쪽 경계
-    int TOP;                // 위쪽 경계  
-    unsigned int WIDTH;     // 너비
-    unsigned int HEIGHT;    // 높이
-} ROCR_RocrTextBox;
-
-// 상세 결과
-typedef struct ROCR_RocrResult {
-    enum ROCR_RocrStatus STATUS;     // 상태 코드
-    size_t COUNT;                    // 텍스트 상자 수
-    struct ROCR_RocrTextBox* BOXES;  // 텍스트 상자 배열
-} ROCR_RocrResult;
-
-// 간단 결과
-typedef struct ROCR_RocrSimpleResult {
-    enum ROCR_RocrStatus STATUS;     // 상태 코드
-    size_t COUNT;                    // 텍스트 수
-    char** TEXTS;                    // 텍스트 배열
-} ROCR_RocrSimpleResult;
-```
-
-#### 메모리 관리 주의사항
-
-1. **결과 해제**: 반드시 해당 해제 함수를 호출하여 결과 메모리를 해제해야 함
-2. **엔진 소멸**: 사용 완료 후 반드시 엔진 인스턴스를 소멸시켜야 함
-3. **전역 정리**: 프로그램 종료 전 `rocr_cleanup()` 호출하여 모든 리소스 정리
-4. **스레드 안전성**: 엔진 인스턴스는 스레드 안전하지 않으므로 멀티스레드 사용 시 추가 동기화 필요
-
-## 데모 프로그램
-
-프로젝트의 `demo/` 디렉토리에서 완전한 데모 프로그램을 제공합니다:
-
-- **C 데모** (`demo/c_demo.c`): 완전한 C 언어 호출 예시로 간단 모드와 상세 모드 사용법 시연
-- **모델 파일**: `models/` 디렉토리에 예시 모델 파일 포함
-- **테스트 이미지**: `res/` 디렉토리에 테스트 이미지 포함
-
-데모 실행:
-```bash
-# demo 디렉토리로 이동하여 실행
-cd demo && ./c_demo
-```
+### 예시 3
+![원본 이미지 3](res/3.png)
+![OCR 결과 3](res/3_ocr_result.png)
 
 ## 라이선스
 

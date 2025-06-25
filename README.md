@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-A lightweight and efficient OCR (Optical Character Recognition) library implemented in Rust, based on the PaddleOCR models. This library leverages the MNN inference framework to provide high-performance text detection and recognition capabilities, with complete C API support.
+A lightweight and efficient OCR (Optical Character Recognition) library implemented in Rust, based on the PaddleOCR models. This library leverages the MNN inference framework to provide high-performance text detection and recognition capabilities.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
@@ -17,12 +17,10 @@ A lightweight and efficient OCR (Optical Character Recognition) library implemen
 - **Minimal Dependencies**: Lightweight and easy to integrate
 - **Customizable**: Adjustable parameters for different use cases
 - **Command-line Tool**: Simple command-line interface for OCR recognition
-- **C API Support**: Complete C language interface for cross-language integration
-- **Memory Safety**: Automatic memory management with leak prevention
 
 ## Model Versions
 
-This library supports two PaddleOCR model versions:
+This library supports three PaddleOCR model versions:
 
 ### PP-OCRv4
 - **Stable Version**: Well-tested and highly compatible
@@ -44,6 +42,77 @@ This library supports two PaddleOCR model versions:
   - Detection model: `PP-OCRv5_mobile_det.mnn`
   - Recognition model: `PP-OCRv5_mobile_rec.mnn`
   - Character set: `ppocr_keys_v5.txt`
+
+### PP-OCRv5 FP16 ⭐️ New
+- **Efficient Version**: Provides faster inference speed and lower memory usage without sacrificing accuracy
+- **Use Cases**: Scenarios requiring high performance and low memory usage
+- **Performance Improvements**:
+  - Inference speed increased by ~9%
+  - Memory usage reduced by ~8%
+  - Model size halved
+- **Model Files**:
+  - Detection model: `PP-OCRv5_mobile_det_fp16.mnn`
+  - Recognition model: `PP-OCRv5_mobile_rec_fp16.mnn`
+  - Character set: `ppocr_keys_v5.txt`
+
+### Model Performance Comparison
+
+| Feature             | PP-OCRv4 | PP-OCRv5 | PP-OCRv5 FP16 |
+|---------------------|----------|----------|---------------|
+| Script Support      | Chinese, English | Simplified Chinese, Traditional Chinese, English, Japanese, Chinese Pinyin | Simplified Chinese, Traditional Chinese, English, Japanese, Chinese Pinyin |
+| Handwriting Support | Basic    | Enhanced | Enhanced |
+| Vertical Text       | Basic    | Optimized | Optimized |
+| Rare Character      | Limited  | Enhanced | Enhanced |
+| Inference Speed (FPS)| 1.1     | 1.2      | 1.2 |
+| Memory Usage (Peak) | 422.22MB | 388.41MB | 388.41MB |
+| Model Size          | Standard | Standard | Halved |
+| Recommended Use Case| Regular Documents | Complex Scenarios | High-Performance Scenarios |
+
+### PP-OCRv5 FP16 Test Data
+
+#### Standard Model
+```
+============================================================
+Test Report: Inference Speed Test
+============================================================
+Total Time: 44.23s
+Average Inference Time: 884.64ms
+Fastest Inference Time: 744.99ms
+Slowest Inference Time: 954.03ms
+Success Count: 50
+Failure Count: 0
+Inference Speed: 1.1 FPS
+Memory Usage - Start: 14.94MB
+Memory Usage - End: 422.22MB
+Memory Usage - Peak: 422.22MB
+Memory Change: +407.28MB
+```
+
+#### FP16 Model
+```
+============================================================
+Test Report: Inference Speed Test
+============================================================
+Total Time: 43.33s
+Average Inference Time: 866.66ms
+Fastest Inference Time: 719.41ms
+Slowest Inference Time: 974.93ms
+Success Count: 50
+Failure Count: 0
+Inference Speed: 1.2 FPS
+Memory Usage - Start: 15.70MB
+Memory Usage - End: 388.41MB
+Memory Usage - Peak: 388.41MB
+Memory Change: +372.70MB
+```
+
+### Testing Method
+
+Run the following command to execute the test and verify performance data (based on Mac Mini M4):
+
+```bash
+python test_ffi.py test
+```
 
 ## Installation
 
@@ -120,131 +189,65 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### As a C Library
+## Command-line Tool
 
-This library provides a complete C API interface for use in C/C++ projects:
-
-#### Building the C Dynamic Library
+This library provides a built-in command-line tool for direct OCR recognition:
 
 ```bash
-# Build the dynamic library
+# Basic usage
+./ocr -p path/to/image.jpg
+
+# Output in JSON format (with detailed information and positions)
+./ocr -p path/to/image.jpg -m json
+
+# Show verbose log information
+./ocr -p path/to/image.jpg -v
+
+# Show current model version information
+./ocr --version-info
+```
+
+### Building Different Versions
+
+```bash
+# Build with PP-OCRv4 models (default)
 cargo build --release
 
-# Generated library location (depends on system):
-# Linux: target/release/librust_paddle_ocr.so
-# macOS: target/release/librust_paddle_ocr.dylib  
-# Windows: target/release/rust_paddle_ocr.dll
-
-# C header file is automatically generated in project root: rocr.h
+# Build with PP-OCRv5 models (recommended)
+cargo build --release --features v5
 ```
 
-#### C API Usage Example
+### Command-line Options
 
-```c
-#include "rocr.h"
-#include <stdio.h>
-
-int main() {
-    // Get version information
-    printf("OCR Library Version: %s\n", rocr_version());
-    
-    // Create OCR engine
-    ROCR_RocrHandle engine = rocr_create_engine(
-        "./models/PP-OCRv5_mobile_det.mnn",
-        "./models/PP-OCRv5_mobile_rec.mnn", 
-        "./models/ppocr_keys_v5.txt"
-    );
-    
-    if (engine == 0) {
-        printf("Failed to create OCR engine\n");
-        return 1;
-    }
-    
-    // Simple mode recognition - get only text content
-    struct ROCR_RocrSimpleResult simple_result = 
-        rocr_recognize_simple(engine, "./image.jpg");
-    
-    if (simple_result.STATUS == ROCR_RocrStatus_Success) {
-        printf("Recognized %zu texts:\n", simple_result.COUNT);
-        for (size_t i = 0; i < simple_result.COUNT; i++) {
-            printf("- %s\n", simple_result.TEXTS[i]);
-        }
-    }
-    
-    // Free simple result memory
-    rocr_free_simple_result(&simple_result);
-    
-    // Detailed mode recognition - get text and position information
-    struct ROCR_RocrResult detailed_result = 
-        rocr_recognize_detailed(engine, "./image.jpg");
-    
-    if (detailed_result.STATUS == ROCR_RocrStatus_Success) {
-        printf("Detailed recognition found %zu text boxes:\n", detailed_result.COUNT);
-        for (size_t i = 0; i < detailed_result.COUNT; i++) {
-            struct ROCR_RocrTextBox* box = &detailed_result.BOXES[i];
-            printf("Text: %s\n", box->TEXT);
-            printf("Confidence: %.2f\n", box->CONFIDENCE);
-            printf("Position: (%d, %d, %u, %u)\n", 
-                   box->LEFT, box->TOP, box->WIDTH, box->HEIGHT);
-        }
-    }
-    
-    // Free detailed result memory
-    rocr_free_result(&detailed_result);
-    
-    // Destroy engine
-    rocr_destroy_engine(engine);
-    
-    // Cleanup all resources
-    rocr_cleanup();
-    
-    return 0;
-}
+```
+Options:
+  -p, --path <IMAGE_PATH>  Path to the image for recognition
+  -m, --mode <MODE>        Output mode: json(detailed) or text(simple) [default: text]
+  -v, --verbose            Show verbose log information
+      --version-info       Show model version information
+  -h, --help               Print help information
+  -V, --version            Print version information
 ```
 
-#### Building and Running C Demo
+## Model Files
 
-The project provides a complete C language demonstration program:
+You can obtain pre-trained MNN models from the following sources:
 
-```bash
-# Enter demo directory
-cd demo
+1. **Official Models**: Download from PaddleOCR official repository and convert to MNN format
+2. **Project Provided**: The `models/` directory in this project contains pre-converted model files
 
-# Compile C demo (Linux/macOS)
-gcc -o c_demo c_demo.c -L../target/release -lrust_paddle_ocr -ldl
+## PP-OCRv5 vs PP-OCRv4 Performance Comparison
 
-# Run demo
-./c_demo
-
-# Windows compilation example
-# gcc -o c_demo.exe c_demo.c -L../target/release -lrust_paddle_ocr -lws2_32 -luserenv
-```
-
-#### Advanced C API Configuration
-
-```c
-// Create engine with custom configuration
-ROCR_RocrHandle engine = rocr_create_engine_with_config(
-    det_model_path,
-    rec_model_path, 
-    keys_path,
-    12,    // rect_border_size - border expansion size
-    0,     // merge_boxes - whether to merge text boxes (0=false, 1=true)
-    1      // merge_threshold - merge threshold
-);
-
-// Create engine with model data in memory
-ROCR_RocrHandle engine = rocr_create_engine_with_bytes(
-    det_model_data, det_model_size,
-    rec_model_data, rec_model_size,
-    keys_data, keys_size,
-    12, 0, 1
-);
-```
+| Feature | PP-OCRv4 | PP-OCRv5 |
+|---------|----------|----------|
+| Script Support | Chinese, English | Simplified Chinese, Traditional Chinese, English, Japanese, Chinese Pinyin |
+| Handwriting Recognition | Basic support | Significantly enhanced |
+| Vertical Text | Basic support | Optimized improvement |
+| Rare Character Recognition | Limited support | Enhanced recognition |
+| End-to-End Accuracy | Baseline | 13% improvement |
+| Recommended Scenarios | Regular documents | Complex and diverse scenarios |
 
 ## API Reference
-
-### Rust API
 
 ### Text Detection (Det)
 
@@ -279,84 +282,9 @@ let char_scores = rec.predict_char_score(&text_img)?;
 
 // Customization options
 let rec = rec
-    .with_min_score(0.6)           // Set minimum confidence for regular characters
-    .with_punct_min_score(0.1);    // Set minimum confidence for punctuation
+    .with_min_score(0.6)
+    .with_punct_min_score(0.1);
 ```
-
-### C API
-
-#### Core Functions
-
-```c
-// Engine management
-ROCR_RocrHandle rocr_create_engine(const char* det_model, 
-                                   const char* rec_model, 
-                                   const char* keys_file);
-ROCR_RocrHandle rocr_create_engine_with_config(...);
-ROCR_RocrHandle rocr_create_engine_with_bytes(...);
-enum ROCR_RocrStatus rocr_destroy_engine(ROCR_RocrHandle handle);
-
-// Text recognition
-struct ROCR_RocrSimpleResult rocr_recognize_simple(ROCR_RocrHandle handle, 
-                                                   const char* image_path);
-struct ROCR_RocrResult rocr_recognize_detailed(ROCR_RocrHandle handle, 
-                                               const char* image_path);
-
-// Memory management
-void rocr_free_simple_result(struct ROCR_RocrSimpleResult* result);
-void rocr_free_result(struct ROCR_RocrResult* result);
-void rocr_cleanup(void);
-
-// Utility functions
-const char* rocr_version(void);
-```
-
-#### Data Structures
-
-```c
-// Status codes
-typedef enum ROCR_RocrStatus {
-    ROCR_RocrStatus_Success = 0,
-    ROCR_RocrStatus_InitError = 1,
-    ROCR_RocrStatus_FileNotFound = 2,
-    ROCR_RocrStatus_ImageLoadError = 3,
-    ROCR_RocrStatus_ProcessError = 4,
-    ROCR_RocrStatus_MemoryError = 5,
-    ROCR_RocrStatus_InvalidParam = 6,
-    ROCR_RocrStatus_NotInitialized = 7,
-} ROCR_RocrStatus;
-
-// Text box
-typedef struct ROCR_RocrTextBox {
-    char* TEXT;              // Recognized text
-    float CONFIDENCE;        // Confidence score (0.0-1.0)
-    int LEFT;               // Left boundary
-    int TOP;                // Top boundary  
-    unsigned int WIDTH;     // Width
-    unsigned int HEIGHT;    // Height
-} ROCR_RocrTextBox;
-
-// Detailed result
-typedef struct ROCR_RocrResult {
-    enum ROCR_RocrStatus STATUS;     // Status code
-    size_t COUNT;                    // Number of text boxes
-    struct ROCR_RocrTextBox* BOXES;  // Text box array
-} ROCR_RocrResult;
-
-// Simple result
-typedef struct ROCR_RocrSimpleResult {
-    enum ROCR_RocrStatus STATUS;     // Status code
-    size_t COUNT;                    // Number of texts
-    char** TEXTS;                    // Text array
-} ROCR_RocrSimpleResult;
-```
-
-#### Memory Management Notes
-
-1. **Result Cleanup**: Must call corresponding cleanup functions to free result memory
-2. **Engine Destruction**: Must destroy engine instances when finished
-3. **Global Cleanup**: Call `rocr_cleanup()` before program termination to clean all resources
-4. **Thread Safety**: Engine instances are not thread-safe, requires additional synchronization for multi-threading
 
 ## Performance Optimization
 
@@ -366,19 +294,21 @@ This library includes several optimizations:
 - Adaptive image preprocessing
 - Configurable confidence thresholds
 
-## Demo Programs
+## Example Results
 
-The project provides complete demonstration programs in the `demo/` directory:
+Here are some example results showing the library in action:
 
-- **C Demo** (`demo/c_demo.c`): Complete C language usage example, demonstrating both simple and detailed modes
-- **Model Files**: The `models/` directory contains example model files
-- **Test Images**: The `res/` directory contains test images
+### Example 1
+![Original Image 1](res/1.png)
+![OCR Result 1](res/1_ocr_result.png)
 
-Run the demo:
-```bash
-# Enter demo directory and run
-cd demo && ./c_demo
-```
+### Example 2
+![Original Image 2](res/2.png)
+![OCR Result 2](res/2_ocr_result.png)
+
+### Example 3
+![Original Image 3](res/3.png)
+![OCR Result 3](res/3_ocr_result.png)
 
 ## License
 

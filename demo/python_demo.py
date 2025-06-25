@@ -78,8 +78,8 @@ def main():
     print("=== Rust PaddleOCR Python API Demo ===")
     
     # 模型文件路径
-    det_model = b"../models/PP-OCRv5_mobile_det.mnn"
-    rec_model = b"../models/PP-OCRv5_mobile_rec.mnn"
+    det_model = b"../models/PP-OCRv5_mobile_det_fp16.mnn"
+    rec_model = b"../models/PP-OCRv5_mobile_rec_fp16.mnn"
     keys_file = b"../models/ppocr_keys_v5.txt"
     image_file = b"../res/4.png"
     
