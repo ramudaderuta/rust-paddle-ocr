@@ -38,7 +38,7 @@ enum OutputMode {
 struct Args {
     /// 要识别的图像路径
     #[arg(short, long, value_name = "IMAGE_PATH")]
-    path: PathBuf,
+    path: Option<PathBuf>,
 
     /// 输出模式：json(详细) 或 text(简单)
     #[arg(short, long, value_enum, default_value_t = OutputMode::Text)]
@@ -79,6 +79,15 @@ fn main() -> OcrResult<()> {
         return Ok(());
     }
 
+    // 检查是否提供了图片路径
+    let image_path = match &args.path {
+        Some(path) => path,
+        None => {
+            eprintln!("Error: Image path is required for OCR processing. Use --path to specify the image file.");
+            std::process::exit(1);
+        }
+    };
+
     // 配置日志
     if args.verbose {
         std::env::set_var("RUST_LOG", "info");
@@ -90,21 +99,21 @@ fn main() -> OcrResult<()> {
     info!("Starting PaddleOCR command line tool");
 
     // 检查输入文件是否存在
-    if !args.path.exists() {
-        error!("Input image file does not exist: {:?}", args.path);
+    if !image_path.exists() {
+        error!("Input image file does not exist: {:?}", image_path);
         return Err(OcrError::InputError(format!(
             "Input file not found: {:?}",
-            args.path
+            image_path
         )));
     }
 
-    let result = process_ocr(&args);
+    let result = process_ocr(&args, image_path);
 
     info!("OCR process completed");
     result
 }
 
-fn process_ocr(args: &Args) -> OcrResult<()> {
+fn process_ocr(args: &Args, image_path: &PathBuf) -> OcrResult<()> {
     // 直接使用字节数据初始化OCR引擎
     info!(
         "Initializing OCR engine from embedded PP-OCR{} models...",
@@ -117,8 +126,8 @@ fn process_ocr(args: &Args) -> OcrResult<()> {
     )?;
 
     // 加载图像
-    info!("Loading image from {:?}...", args.path);
-    let img = match image::open(&args.path) {
+    info!("Loading image from {:?}...", image_path);
+    let img = match image::open(image_path) {
         Ok(img) => {
             info!("Image loaded, size: {}x{}", img.width(), img.height());
             img
