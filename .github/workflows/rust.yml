@@ -104,7 +104,7 @@ jobs:
       - name: Install LLVM for Windows
         if: matrix.os == 'windows-2022'
         run: |
-          choco install llvm --version=18.1.8 -y
+          choco install llvm --version=19.1.0 -y
           echo "C:\Program Files\LLVM\bin" >> $GITHUB_PATH
         shell: powershell
       
