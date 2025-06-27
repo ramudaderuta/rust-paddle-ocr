@@ -29,12 +29,12 @@ jobs:
             asset_name: ocr-v5-linux-amd64
             target: x86_64-unknown-linux-gnu
             features: "--features v5"
-          - os: windows-2019
+          - os: windows-2022
             artifact_name: ocr.exe
             asset_name: ocr-v4-windows-amd64.exe
             target: x86_64-pc-windows-msvc
             features: ""
-          - os: windows-2019
+          - os: windows-2022
             artifact_name: ocr.exe
             asset_name: ocr-v5-windows-amd64.exe
             target: x86_64-pc-windows-msvc
@@ -73,12 +73,12 @@ jobs:
             features: "--features v5"
           
           # 32位架构 - 两个版本
-          - os: windows-2019
+          - os: windows-2022
             artifact_name: ocr.exe
             asset_name: ocr-v4-windows-x86.exe
             target: i686-pc-windows-msvc
             features: ""
-          - os: windows-2019
+          - os: windows-2022
             artifact_name: ocr.exe
             asset_name: ocr-v5-windows-x86.exe
             target: i686-pc-windows-msvc
@@ -95,14 +95,14 @@ jobs:
           target: ${{ matrix.target }}
       
       - name: Setup Windows Build Environment
-        if: matrix.os == 'windows-2019'
+        if: matrix.os == 'windows-2022'
         run: |
           echo "RUSTFLAGS=-C target-feature=+crt-static" >> $GITHUB_ENV
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $GITHUB_ENV
         shell: bash
       
       - name: Install LLVM for Windows
-        if: matrix.os == 'windows-2019'
+        if: matrix.os == 'windows-2022'
         run: |
           choco install llvm --version=18.1.8 -y
           echo "C:\Program Files\LLVM\bin" >> $GITHUB_PATH
@@ -131,7 +131,7 @@ jobs:
           args: --verbose --target ${{ matrix.target }} ${{ matrix.features }}
       
       - name: Run tests
-        if: contains(matrix.target, 'x86_64') && matrix.os != 'windows-2019'
+        if: contains(matrix.target, 'x86_64') && matrix.os != 'windows-2022'
         uses: actions-rs/cargo@v1
         with:
           command: test
@@ -147,7 +147,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
-          if [ "${{ matrix.os }}" = "windows-2019" ]; then
+          if [ "${{ matrix.os }}" = "windows-2022" ]; then
             cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
           else
             cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
