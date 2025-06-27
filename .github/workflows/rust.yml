@@ -125,6 +125,7 @@ jobs:
         shell: bash
       
       - name: Build
+        if: matrix.os != 'windows-2022'
         uses: actions-rs/cargo@v1
         with:
           command: build
