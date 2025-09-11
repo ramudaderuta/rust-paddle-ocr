@@ -7,13 +7,15 @@ import time
 import threading
 import gc
 import statistics
-import resource
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
 # 获取动态库路径
-LIB_PATH = os.path.join(os.path.dirname(__file__), "target/release/librust_paddle_ocr.dylib")
+if sys.platform == "darwin" or sys.platform.startswith("linux"):
+    LIB_PATH = os.path.join(os.path.dirname(__file__), "target/release/librust_paddle_ocr.dylib")
+else:
+    LIB_PATH = os.path.join(os.path.dirname(__file__), "target/release/rust_paddle_ocr.dll")
 
 class RocrStatus(IntEnum):
     """OCR结果状态码"""
@@ -389,6 +391,7 @@ class MemoryMonitor:
             # 使用resource模块获取内存使用情况
             if sys.platform == "darwin" or sys.platform.startswith("linux"):
                 # macOS和Linux
+                import resource
                 usage = resource.getrusage(resource.RUSAGE_SELF)
                 if sys.platform == "darwin":
                     # macOS中ru_maxrss单位是字节

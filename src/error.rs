@@ -60,6 +60,12 @@ pub enum OcrError {
     /// Thread errors
     #[error("Thread error: {0}")]
     ThreadError(String),
+
+    #[cfg(feature="fast_resize")]
+    /// 图像缩放错误
+    /// Image resize errors
+    #[error("Image resize error: {0}")]
+    ResizeError(#[from] fast_image_resize::ResizeError),
 }
 
 /// OCR操作的结果类型
