@@ -1,3 +1,5 @@
+#[cfg(feature = "fast_image_resize")]
+use fast_image_resize::Resizer;
 use image::{DynamicImage, GenericImageView};
 use mnn::{BackendConfig, ForwardType, Interpreter, PowerMode, PrecisionMode, ScheduleConfig};
 use ndarray::{Array, ArrayBase, Dim, OwnedRepr};
@@ -14,6 +16,8 @@ pub struct Rec {
     keys: Vec<char>,
     min_score: f32,
     punct_min_score: f32,
+    #[cfg(feature = "fast_resize")]
+    resizer: fast_image_resize::Resizer,
 }
 
 impl Rec {
@@ -36,6 +40,8 @@ impl Rec {
             keys,
             min_score: Self::MIN_SCORE_DEFAULT,
             punct_min_score: Self::PUNCT_MIN_SCORE_DEFAULT,
+            #[cfg(feature = "fast_resize")]
+            resizer: fast_image_resize::Resizer::new(),
         }
     }
 
@@ -58,6 +64,8 @@ impl Rec {
             keys,
             min_score: Self::MIN_SCORE_DEFAULT,
             punct_min_score: Self::PUNCT_MIN_SCORE_DEFAULT,
+            #[cfg(feature = "fast_resize")]
+            resizer: fast_image_resize::Resizer::new(),
         })
     }
 
@@ -83,6 +91,8 @@ impl Rec {
             keys,
             min_score: Self::MIN_SCORE_DEFAULT,
             punct_min_score: Self::PUNCT_MIN_SCORE_DEFAULT,
+            #[cfg(feature = "fast_resize")]
+            resizer: fast_image_resize::Resizer::new(),
         })
     }
 
@@ -110,6 +120,8 @@ impl Rec {
             keys,
             min_score: Self::MIN_SCORE_DEFAULT,
             punct_min_score: Self::PUNCT_MIN_SCORE_DEFAULT,
+            #[cfg(feature = "fast_resize")]
+            resizer: fast_image_resize::Resizer::new(),
         })
     }
 
@@ -138,7 +150,10 @@ impl Rec {
     ///
     /// Recognize text in the image, returning characters and their confidence scores
     pub fn predict_char_score(&mut self, img: &DynamicImage) -> OcrResult<Vec<(char, f32)>> {
+        #[cfg(not(feature = "fast_resize"))]
         let input = Self::preprocess(img)?;
+        #[cfg(feature = "fast_resize")]
+        let input = Self::preprocess(img, &mut self.resizer)?;
         let output = self.run_model(&input)?;
         Ok(output)
     }
@@ -171,6 +186,43 @@ impl Rec {
         Ok((text, avg_score))
     }
 
+    #[cfg(feature = "fast_resize")]
+    fn preprocess(
+        img: &DynamicImage,
+        resizer: &mut Resizer,
+    ) -> OcrResult<ArrayBase<OwnedRepr<f32>, Dim<[usize; 4]>>> {
+        use fast_image_resize::{FilterType, ResizeAlg, ResizeOptions};
+        let (w, h) = img.dimensions();
+        let img = if h <= 48 {
+            Cow::Borrowed(img)
+        } else {
+            let resize_option =
+                ResizeOptions::new().resize_alg(ResizeAlg::Convolution(FilterType::CatmullRom));
+            let mut dst_img = DynamicImage::new(w * 48 / h, 48, img.color());
+            resizer.resize(img, &mut dst_img, &resize_option)?;
+            Cow::Owned(dst_img)
+        };
+
+        let (w, h) = img.dimensions();
+        let mut input = Array::zeros((1, 3, h as usize, w as usize));
+
+        const MEAN: f32 = 0.5;
+        const STD: f32 = 0.5;
+
+        for pixel in img.pixels() {
+            let x = pixel.0 as usize;
+            let y = pixel.1 as usize;
+            let [r, g, b, _] = pixel.2 .0;
+
+            input[[0, 0, y, x]] = (r as f32 / 255.0 - MEAN) / STD;
+            input[[0, 1, y, x]] = (g as f32 / 255.0 - MEAN) / STD;
+            input[[0, 2, y, x]] = (b as f32 / 255.0 - MEAN) / STD;
+        }
+
+        Ok(input)
+    }
+
+    #[cfg(not(feature = "fast_resize"))]
     fn preprocess(img: &DynamicImage) -> OcrResult<ArrayBase<OwnedRepr<f32>, Dim<[usize; 4]>>> {
         let (w, h) = img.dimensions();
         let img = if h <= 48 {
