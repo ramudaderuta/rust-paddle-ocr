@@ -1,4 +1,5 @@
 use crate::{Det, OcrError, OcrResult, Rec};
+
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use image::DynamicImage;
 use imageproc::rect::Rect;
@@ -62,6 +63,26 @@ pub enum OcrRequest {
         /// 结果发送通道
         /// Result sender channel
         result_sender: Sender<OcrResult<Vec<DynamicImage>>>,
+    },
+    /// 使用高效裁剪获取文本区域图像请求
+    /// Get text region images using efficient cropping
+    GetTextImagesEfficient {
+        /// 输入图像
+        /// Input image
+        image: DynamicImage,
+        /// 结果发送通道
+        /// Result sender channel
+        result_sender: Sender<OcrResult<Vec<DynamicImage>>>,
+    },
+    /// 使用高效裁剪的完整OCR处理请求
+    /// Full OCR processing request with efficient cropping
+    ProcessOcrEfficient {
+        /// 输入图像
+        /// Input image
+        image: DynamicImage,
+        /// 结果发送通道
+        /// Result sender channel
+        result_sender: Sender<OcrResult<Vec<String>>>,
     },
     /// 关闭引擎请求
     /// Shutdown engine request
@@ -291,6 +312,52 @@ impl OcrEngine {
         })?
     }
 
+    /// 使用高效裁剪获取文本区域图像
+    ///
+    /// Get text region images using efficient cropping
+    pub fn get_text_images_efficient(&self, image: &DynamicImage) -> OcrResult<Vec<DynamicImage>> {
+        // 创建结果通道
+        let (result_tx, result_rx) = unbounded();
+
+        // 发送请求
+        self.request_sender
+            .send(OcrRequest::GetTextImagesEfficient {
+                image: image.clone(),
+                result_sender: result_tx,
+            })
+            .map_err(|_| {
+                OcrError::EngineError("OCR engine worker thread has terminated".to_string())
+            })?;
+
+        // 等待结果
+        result_rx.recv().map_err(|_| {
+            OcrError::EngineError("Failed to receive result from worker thread".to_string())
+        })?
+    }
+
+    /// 使用高效裁剪的完整OCR处理
+    ///
+    /// Complete OCR processing using efficient cropping
+    pub fn process_ocr_efficient(&self, image: DynamicImage) -> OcrResult<Vec<String>> {
+        // 创建结果通道
+        let (result_tx, result_rx) = unbounded();
+
+        // 发送请求
+        self.request_sender
+            .send(OcrRequest::ProcessOcrEfficient {
+                image,
+                result_sender: result_tx,
+            })
+            .map_err(|_| {
+                OcrError::EngineError("OCR engine worker thread has terminated".to_string())
+            })?;
+
+        // 等待结果
+        result_rx.recv().map_err(|_| {
+            OcrError::EngineError("Failed to receive result from worker thread".to_string())
+        })?
+    }
+
     /// 工作线程的主处理函数
     ///
     /// Main processing function for the worker thread
@@ -349,6 +416,38 @@ impl OcrEngine {
                 } => {
                     // 先检测文本区域
                     match det.find_text_img(&image) {
+                        Ok(text_images) => {
+                            // 识别每个文本区域
+                            let mut results = Vec::with_capacity(text_images.len());
+                            for text_img in text_images {
+                                match rec.predict_str(&text_img) {
+                                    Ok(text) => results.push(text),
+                                    Err(e) => {
+                                        let _ = result_sender.send(Err(e));
+                                        break;
+                                    }
+                                }
+                            }
+                            let _ = result_sender.send(Ok(results));
+                        }
+                        Err(e) => {
+                            let _ = result_sender.send(Err(e));
+                        }
+                    }
+                }
+                OcrRequest::GetTextImagesEfficient {
+                    image,
+                    result_sender,
+                } => {
+                    let result = det.find_text_img_efficient(&image);
+                    let _ = result_sender.send(result);
+                }
+                OcrRequest::ProcessOcrEfficient {
+                    image,
+                    result_sender,
+                } => {
+                    // 使用高效裁剪先检测文本区域
+                    match det.find_text_img_efficient(&image) {
                         Ok(text_images) => {
                             // 识别每个文本区域
                             let mut results = Vec::with_capacity(text_images.len());
@@ -436,6 +535,38 @@ impl OcrEngine {
                 } => {
                     // 先检测文本区域
                     match det.find_text_img(&image) {
+                        Ok(text_images) => {
+                            // 识别每个文本区域
+                            let mut results = Vec::with_capacity(text_images.len());
+                            for text_img in text_images {
+                                match rec.predict_str(&text_img) {
+                                    Ok(text) => results.push(text),
+                                    Err(e) => {
+                                        let _ = result_sender.send(Err(e));
+                                        break;
+                                    }
+                                }
+                            }
+                            let _ = result_sender.send(Ok(results));
+                        }
+                        Err(e) => {
+                            let _ = result_sender.send(Err(e));
+                        }
+                    }
+                }
+                OcrRequest::GetTextImagesEfficient {
+                    image,
+                    result_sender,
+                } => {
+                    let result = det.find_text_img_efficient(&image);
+                    let _ = result_sender.send(result);
+                }
+                OcrRequest::ProcessOcrEfficient {
+                    image,
+                    result_sender,
+                } => {
+                    // 使用高效裁剪先检测文本区域
+                    match det.find_text_img_efficient(&image) {
                         Ok(text_images) => {
                             // 识别每个文本区域
                             let mut results = Vec::with_capacity(text_images.len());
@@ -668,5 +799,37 @@ impl OcrEngineManager {
             .ok_or_else(|| OcrError::EngineError("OCR engine not initialized".to_string()))?;
 
         engine.process_ocr(image)
+    }
+
+    /// 使用高效裁剪获取文本区域图像
+    ///
+    /// Get text region images using efficient cropping
+    pub fn get_text_images_efficient(image: &DynamicImage) -> OcrResult<Vec<DynamicImage>> {
+        let instance = Self::get_instance()?;
+        let guard = instance.lock().map_err(|_| {
+            OcrError::EngineError("Failed to acquire lock on OCR engine manager".to_string())
+        })?;
+
+        let engine = guard
+            .as_ref()
+            .ok_or_else(|| OcrError::EngineError("OCR engine not initialized".to_string()))?;
+
+        engine.get_text_images_efficient(image)
+    }
+
+    /// 使用高效裁剪的完整OCR处理
+    ///
+    /// Complete OCR processing using efficient cropping
+    pub fn process_ocr_efficient(image: DynamicImage) -> OcrResult<Vec<String>> {
+        let instance = Self::get_instance()?;
+        let guard = instance.lock().map_err(|_| {
+            OcrError::EngineError("Failed to acquire lock on OCR engine manager".to_string())
+        })?;
+
+        let engine = guard
+            .as_ref()
+            .ok_or_else(|| OcrError::EngineError("OCR engine not initialized".to_string()))?;
+
+        engine.process_ocr_efficient(image)
     }
 }
