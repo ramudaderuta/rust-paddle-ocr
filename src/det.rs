@@ -4,6 +4,7 @@ use mnn::{BackendConfig, ForwardType, Interpreter, PowerMode, PrecisionMode, Sch
 use ndarray::{Array, ArrayBase, Dim, OwnedRepr};
 use std::path::Path;
 
+use crate::efficient_cropping::{EfficientCropper, ImageRef};
 use crate::error::OcrResult;
 
 /// 文本检测模型
@@ -15,6 +16,11 @@ pub struct Det {
     rect_border_size: u32,
     merge_boxes: bool,
     merge_threshold: i32,
+    // 缓存张量名称以避免重复查找
+    input_tensor_name: Option<String>,
+    output_tensor_name: Option<String>,
+    // 缓存最后的输入形状，避免不必要的resize操作
+    last_input_shape: Option<[i32; 4]>,
 }
 
 impl Det {
@@ -45,6 +51,9 @@ impl Det {
             rect_border_size: Self::RECT_BORDER_SIZE,
             merge_boxes: false,
             merge_threshold: Self::DEFAULT_MERGE_THRESHOLD,
+            input_tensor_name: None,
+            output_tensor_name: None,
+            last_input_shape: None,
         }
     }
 
@@ -59,6 +68,9 @@ impl Det {
             rect_border_size: Self::RECT_BORDER_SIZE,
             merge_boxes: false,
             merge_threshold: Self::DEFAULT_MERGE_THRESHOLD,
+            input_tensor_name: None,
+            output_tensor_name: None,
+            last_input_shape: None,
         })
     }
 
@@ -73,6 +85,9 @@ impl Det {
             rect_border_size: Self::RECT_BORDER_SIZE,
             merge_boxes: false,
             merge_threshold: Self::DEFAULT_MERGE_THRESHOLD,
+            input_tensor_name: None,
+            output_tensor_name: None,
+            last_input_shape: None,
         })
     }
 
@@ -136,6 +151,28 @@ impl Det {
         Ok(results)
     }
 
+    /// 使用高效裁剪算法的版本
+    /// Find text regions using efficient cropping algorithm
+    pub fn find_text_img_efficient(&mut self, img: &DynamicImage) -> OcrResult<Vec<DynamicImage>> {
+        let rects = self.find_text_rect(img)?;
+
+        if rects.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // 使用ImageRef避免不必要的图像克隆
+        let image_ref = ImageRef::from(img.clone());
+
+        // 根据矩形数量选择最优的批量裁剪策略
+        let results = match rects.len() {
+            1 => vec![EfficientCropper::smart_crop(&image_ref, &rects[0])],
+            2..=8 => EfficientCropper::parallel_batch_crop(&image_ref, &rects),
+            _ => EfficientCropper::optimized_batch_crop(&image_ref, &rects),
+        };
+
+        Ok(results)
+    }
+
     fn preprocess(img: &DynamicImage) -> OcrResult<ArrayBase<OwnedRepr<f32>, Dim<[usize; 4]>>> {
         let (w, h) = img.dimensions();
         let pad_w = Self::get_pad_length(w);
@@ -148,17 +185,46 @@ impl Det {
         const MEAN: [f32; 3] = [0.485, 0.456, 0.406];
         const STD: [f32; 3] = [0.229, 0.224, 0.225];
 
-        // 批量处理图像像素
-        for pixel in img.pixels() {
-            let x = pixel.0 as usize;
-            let y = pixel.1 as usize;
-            let [r, g, b, _] = pixel.2 .0;
+        // 转换为RGB格式以便批量处理
+        let rgb_img = img.to_rgb8();
+        let img_width = w as usize;
+        let img_height = h as usize;
 
-            // 使用索引直接访问以提高性能
-            input[[0, 0, y, x]] = (r as f32 / 255.0 - MEAN[0]) / STD[0];
-            input[[0, 1, y, x]] = (g as f32 / 255.0 - MEAN[1]) / STD[1];
-            input[[0, 2, y, x]] = (b as f32 / 255.0 - MEAN[2]) / STD[2];
-        }
+        // 使用 rayon 并行处理像素，但使用安全的索引方式
+        use rayon::prelude::*;
+        use std::sync::Mutex;
+
+        let input_mutex = Mutex::new(&mut input);
+
+        // 收集所有需要处理的像素坐标
+        let pixel_coords: Vec<(usize, usize)> = (0..img_height)
+            .flat_map(|y| (0..img_width).map(move |x| (x, y)))
+            .collect();
+
+        // 分批并行处理像素
+        pixel_coords.par_chunks(1024).for_each(|chunk| {
+            let mut local_updates = Vec::with_capacity(chunk.len());
+
+            for &(x, y) in chunk {
+                let pixel = rgb_img.get_pixel(x as u32, y as u32);
+                let [r, g, b] = pixel.0;
+
+                // 计算归一化值
+                let norm_r = (r as f32 / 255.0 - MEAN[0]) / STD[0];
+                let norm_g = (g as f32 / 255.0 - MEAN[1]) / STD[1];
+                let norm_b = (b as f32 / 255.0 - MEAN[2]) / STD[2];
+
+                local_updates.push(((0, 0, y, x), norm_r));
+                local_updates.push(((0, 1, y, x), norm_g));
+                local_updates.push(((0, 2, y, x), norm_b));
+            }
+
+            // 批量更新到主数组
+            let mut input_guard = input_mutex.lock().unwrap();
+            for (coords, value) in local_updates {
+                input_guard[coords] = value;
+            }
+        });
 
         Ok(input)
     }
@@ -171,21 +237,24 @@ impl Det {
     ) -> OcrResult<GrayImage> {
         let pad_w = Self::get_pad_length(width);
 
-        // 修改策略：创建会话，配置好后，先通过所有者操作完成各种配置，再执行推理
+        // 优化配置：使用更好的性能配置
         if self.session.is_none() {
             let mut config = ScheduleConfig::new();
             config.set_type(ForwardType::Auto);
+
             let mut backend_config = BackendConfig::new();
-            backend_config.set_precision_mode(PrecisionMode::High);
+            // 使用更低精度以提升性能（如果支持的话，否则使用Normal）
+            backend_config.set_precision_mode(PrecisionMode::Low);
             backend_config.set_power_mode(PowerMode::High);
+
             config.set_backend_config(backend_config);
 
             let session = self.interpreter.create_session(config)?;
             self.session = Some(session);
         }
 
-        // 获取输入输出张量列表，然后取第一个
-        let (input_tensor_info, output_tensor_info) = {
+        // 获取或缓存输入输出张量名称
+        if self.input_tensor_name.is_none() || self.output_tensor_name.is_none() {
             let session = self.session.as_ref().unwrap();
             let inputs = self.interpreter.inputs(session);
             let outputs = self.interpreter.outputs(session);
@@ -194,43 +263,46 @@ impl Det {
             let input_info = inputs.iter().next().unwrap();
             let output_info = outputs.iter().next().unwrap();
 
-            (
-                input_info.name().to_string(),
-                output_info.name().to_string(),
-            )
-        };
+            self.input_tensor_name = Some(input_info.name().to_string());
+            self.output_tensor_name = Some(output_info.name().to_string());
+        }
 
-        // 创建会话的副本，这样就不需要同时借用self.session和self.interpreter
+        let input_tensor_info = self.input_tensor_name.as_ref().unwrap();
+        let output_tensor_info = self.output_tensor_name.as_ref().unwrap();
+
         let input_shape = input.shape();
+        let new_shape = [
+            input_shape[0] as i32,
+            input_shape[1] as i32,
+            input_shape[2] as i32,
+            input_shape[3] as i32,
+        ];
 
-        // 获取输入张量并调整大小
-        {
+        // 只在形状变化时才重新调整张量大小
+        let need_resize = self
+            .last_input_shape
+            .map(|last_shape| last_shape != new_shape)
+            .unwrap_or(true);
+
+        if need_resize {
             let session = self.session.as_mut().unwrap();
             let mut input_tensor = unsafe {
                 self.interpreter
-                    .input_unresized::<f32>(session, &input_tensor_info)?
+                    .input_unresized::<f32>(session, input_tensor_info)?
             };
 
-            self.interpreter.resize_tensor(
-                &mut input_tensor,
-                [
-                    input_shape[0] as i32,
-                    input_shape[1] as i32,
-                    input_shape[2] as i32,
-                    input_shape[3] as i32,
-                ],
-            );
-
-            // 释放对张量的引用以便调整会话大小
+            self.interpreter.resize_tensor(&mut input_tensor, new_shape);
             drop(input_tensor);
-
             self.interpreter.resize_session(session);
+
+            // 缓存当前形状
+            self.last_input_shape = Some(new_shape);
         }
 
         // 填充输入数据并执行推理
         let output_data = {
             let session = self.session.as_mut().unwrap();
-            let mut input_tensor = self.interpreter.input::<f32>(session, &input_tensor_info)?;
+            let mut input_tensor = self.interpreter.input::<f32>(session, input_tensor_info)?;
 
             // 使用输入数据填充张量
             if let Some(flat_data) = input.as_slice() {
@@ -255,7 +327,7 @@ impl Det {
             // 获取输出并等待计算完成
             let output = self
                 .interpreter
-                .output::<f32>(session, &output_tensor_info)?;
+                .output::<f32>(session, output_tensor_info)?;
             output.wait(mnn::ffi::MapType::MAP_TENSOR_READ, true);
 
             // 从设备张量创建主机张量并获取数据

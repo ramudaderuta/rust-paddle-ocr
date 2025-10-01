@@ -257,9 +257,12 @@ impl Rec {
         if self.session.is_none() {
             let mut config = ScheduleConfig::new();
             config.set_type(ForwardType::Auto);
+
             let mut backend_config = BackendConfig::new();
-            backend_config.set_precision_mode(PrecisionMode::High);
+            // 使用更低精度以提升性能
+            backend_config.set_precision_mode(PrecisionMode::Low);
             backend_config.set_power_mode(PowerMode::High);
+
             config.set_backend_config(backend_config);
 
             let session = self.interpreter.create_session(config)?;
