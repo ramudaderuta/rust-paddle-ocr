@@ -1064,6 +1064,7 @@ dependencies = [
 [[package]]
 name = "mnn"
 version = "0.2.0"
+source = "git+https://github.com/zibo-chen/mnn-rs.git#7702b133164b3a7fe529d5f5842790e496788bc1"
 dependencies = [
  "dunce",
  "error-stack",
@@ -1076,6 +1077,7 @@ dependencies = [
 [[package]]
 name = "mnn-sys"
 version = "0.1.0"
+source = "git+https://github.com/zibo-chen/mnn-rs.git#7702b133164b3a7fe529d5f5842790e496788bc1"
 dependencies = [
  "anyhow",
  "bindgen",
