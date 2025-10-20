@@ -27,8 +27,8 @@ fn main() -> OcrResult<()> {
 
     info!("Loading text recognition model...");
     let mut rec = match Rec::from_file(
-        "./models/PP-OCRv5_mobile_rec.mnn",
-        "./models/ppocr_keys_v5.txt",
+        "./models/en_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_en.txt",
     ) {
         Ok(rec) => rec,
         Err(e) => {
@@ -38,7 +38,7 @@ fn main() -> OcrResult<()> {
     };
 
     info!("Loading image...");
-    let img = match image::open("./res/4.png") {
+    let img = match image::open("./res/1.png") {
         Ok(img) => {
             info!(
                 "Image loaded successfully, size: {}x{}",

@@ -32,16 +32,24 @@ PaddleOCRモデルをベースにしたRustで実装された軽量で効率的�
 
 ### PP-OCRv5 ⭐️ 推奨
 - **最新版**: 新世代文字認識ソリューション
-- **多文字タイプサポート**: 簡体中国語、中国語ピンイン、繁体中国語、英語、日本語
+- **多言語サポート**: デフォルトモデル（`PP-OCRv5_mobile_rec.mnn`）は簡体中国語、繁体中国語、英語、日本語、中国語ピンインをサポート
+- **専用言語モデル**: 11以上の言語に対応した専用モデルで最適なパフォーマンスを実現：
+  - アラビア語、キリル文字、デーヴァナーガリー文字、ギリシャ語、英語
+  - 東スラブ語、韓国語、ラテン語、タミル語、テルグ語、タイ語
+- **共通検出モデル**: すべてのV5言語モデルは同じ検出モデル（`PP-OCRv5_mobile_det.mnn`）を使用
 - **シーン認識の強化**:
   - 中英複雑手書き文字認識能力が大幅向上
   - 縦書きテキスト認識の最適化
   - 難読漢字認識能力の強化
 - **性能向上**: PP-OCRv4と比較してエンドツーエンドで13ポイント向上
-- **モデルファイル**:
-  - 検出モデル: `PP-OCRv5_mobile_det.mnn`
-  - 認識モデル: `PP-OCRv5_mobile_rec.mnn`
+- **モデルファイル**（デフォルト多言語）:
+  - 検出モデル: `PP-OCRv5_mobile_det.mnn`（全言語共通）
+  - 認識モデル: `PP-OCRv5_mobile_rec.mnn`（デフォルト、中国語/英語/日本語対応）
   - 文字セット: `ppocr_keys_v5.txt`
+- **専用言語モデルファイル**（オプション）:
+  - 認識モデル: `{lang}_PP-OCRv5_mobile_rec_infer.mnn`
+  - 文字セット: `ppocr_keys_{lang}.txt`
+  - 対応言語: `arabic`（アラビア語）、`cyrillic`（キリル文字）、`devanagari`（デーヴァナーガリー文字）、`el`（ギリシャ語）、`en`（英語）、`eslav`（東スラブ語）、`korean`（韓国語）、`latin`（ラテン語）、`ta`（タミル語）、`te`（テルグ語）、`th`（タイ語）
 
 ### PP-OCRv5 FP16 ⭐️ 新規
 - **効率版**: 精度を落とさず、推論速度を向上させ、メモリ使用量を削減
@@ -59,6 +67,7 @@ PaddleOCRモデルをベースにしたRustで実装された軽量で効率的�
 
 | 特徴                | PP-OCRv4 | PP-OCRv5 | PP-OCRv5 FP16 |
 |---------------------|----------|----------|---------------|
+| 言語サポート        | 中国語、英語 | 多言語（デフォルトで中国語/英語/日本語対応、11以上の専用言語モデル提供） | 多言語（デフォルトで中国語/英語/日本語対応、11以上の専用言語モデル提供） |
 | 文字タイプサポート  | 中国語、英語 | 簡体中国語、繁体中国語、英語、日本語、中国語ピンイン | 簡体中国語、繁体中国語、英語、日本語、中国語ピンイン |
 | 手書き文字認識      | 基本サポート | 大幅強化 | 大幅強化 |
 | 縦書きテキスト      | 基本サポート | 最適化向上 | 最適化向上 |
@@ -66,7 +75,7 @@ PaddleOCRモデルをベースにしたRustで実装された軽量で効率的�
 | 推論速度 (FPS)      | 1.1      | 1.2      | 1.2 |
 | メモリ使用量 (ピーク)| 422.22MB | 388.41MB | 388.41MB |
 | モデルサイズ        | 標準     | 標準     | 半分に縮小 |
-| 推奨シーン          | 一般文書 | 複雑多様シーン | 高性能シーン |
+| 推奨シーン          | 一般文書 | 複雑シーン&多言語 | 高性能シーン&多言語 |
 
 ### PP-OCRv5 FP16 テストデータ
 
@@ -189,6 +198,68 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### 専用言語モデルの使用
+
+特定言語の認識精度を向上させるために、専用言語モデルを使用できます：
+
+```rust
+use rust_paddle_ocr::{Det, Rec};
+use image::open;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // すべてのV5言語モデルは同じ検出モデルを共有
+    let mut det = Det::from_file("./models/PP-OCRv5_mobile_det.mnn")?;
+    
+    // === 例1: 英語専用モデル ===
+    let mut rec_en = Rec::from_file(
+        "./models/en_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_en.txt"
+    )?;
+    
+    // === 例2: 韓国語モデル ===
+    let mut rec_ko = Rec::from_file(
+        "./models/korean_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_korean.txt"
+    )?;
+    
+    // === 例3: アラビア語モデル ===
+    let mut rec_ar = Rec::from_file(
+        "./models/arabic_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_arabic.txt"
+    )?;
+    
+    // 画像処理
+    let img = open("path/to/image.jpg")?;
+    let text_images = det.find_text_img(&img)?;
+    
+    for text_img in text_images {
+        let text = rec_en.predict_str(&text_img)?;
+        println!("認識されたテキスト: {}", text);
+    }
+    
+    Ok(())
+}
+```
+
+#### 利用可能な言語モデル
+
+| 言語 | モデルファイル | 文字セット | 用途 |
+|------|---------------|-----------|------|
+| デフォルト（多言語） | `PP-OCRv5_mobile_rec.mnn` | `ppocr_keys_v5.txt` | 中国語、英語、日本語（一般的な用途に推奨） |
+| アラビア語 | `arabic_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_arabic.txt` | アラビア語テキスト認識 |
+| キリル文字 | `cyrillic_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_cyrillic.txt` | ロシア語、ブルガリア語、セルビア語など |
+| デーヴァナーガリー文字 | `devanagari_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_devanagari.txt` | ヒンディー語、マラーティー語、ネパール語など |
+| ギリシャ語 | `el_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_el.txt` | ギリシャ語テキスト認識 |
+| 英語 | `en_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_en.txt` | 英語のみの文書 |
+| 東スラブ語 | `eslav_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_eslav.txt` | ウクライナ語、ベラルーシ語など |
+| 韓国語 | `korean_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_korean.txt` | 韓国語テキスト認識 |
+| ラテン語 | `latin_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_latin.txt` | ラテン文字言語 |
+| タミル語 | `ta_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_ta.txt` | タミル語テキスト認識 |
+| テルグ語 | `te_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_te.txt` | テルグ語テキスト認識 |
+| タイ語 | `th_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_th.txt` | タイ語テキスト認識 |
+
+**注意**: すべての専用言語モデルは同じ検出モデル（`PP-OCRv5_mobile_det.mnn`）を使用します。対象言語に応じて適切な認識モデルを選択することで、最適な精度が得られます。
+
 ## コマンドラインツール
 
 このライブラリには、直接OCR認識を行うための組み込みコマンドラインツールが提供されています：
@@ -240,12 +311,13 @@ cargo build --release --features v5
 
 | 特徴 | PP-OCRv4 | PP-OCRv5 |
 |------|----------|----------|
+| 言語サポート | 中国語、英語 | 多言語（デフォルトで中国語/英語/日本語対応、11以上の専用言語モデル提供） |
 | 文字タイプサポート | 中国語、英語 | 簡体中国語、繁体中国語、英語、日本語、中国語ピンイン |
 | 手書き文字認識 | 基本サポート | 大幅強化 |
 | 縦書きテキスト | 基本サポート | 最適化向上 |
 | 難読漢字認識 | 限定サポート | 認識強化 |
 | エンドツーエンド精度 | ベースライン | 13%向上 |
-| 推奨シーン | 一般文書 | 複雑多様シーン |
+| 推奨シーン | 一般文書 | 複雑シーン&多言語 |
 
 ## API リファレンス
 
@@ -263,9 +335,9 @@ let text_images = det.find_text_img(&img)?;
 
 // カスタマイズオプション
 let det = det
-    .with_rect_border_size(12)
-    .with_merge_boxes(false)
-    .with_merge_threshold(1);
+    .with_rect_border_size(12)  // 検出された領域の境界サイズを設定
+    .with_merge_boxes(false)    // 隣接ボックスのマージを有効/無効化
+    .with_merge_threshold(1);   // ボックスマージのしきい値を設定
 ```
 
 ### テキスト認識 (Rec)
@@ -282,8 +354,8 @@ let char_scores = rec.predict_char_score(&text_img)?;
 
 // カスタマイズオプション
 let rec = rec
-    .with_min_score(0.6)           // 通常文字の最小信頼度を設定
-    .with_punct_min_score(0.1);    // 句読点の最小信頼度を設定
+    .with_min_score(0.6)
+    .with_punct_min_score(0.1);
 ```
 
 ## パフォーマンス最適化

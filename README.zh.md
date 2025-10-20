@@ -34,16 +34,24 @@
 
 ### PP-OCRv5 ⭐️ 推荐
 - **最新版本**：新一代文字识别解决方案
-- **多文字类型支持**：简体中文、中文拼音、繁体中文、英文、日文
+- **多语言支持**：默认模型（`PP-OCRv5_mobile_rec.mnn`）支持简体中文、繁体中文、英文、日文、中文拼音
+- **专用语言模型**：提供11+种语言的专用模型以获得最佳性能：
+  - 阿拉伯语、西里尔语、梵文字母、希腊语、英语
+  - 东斯拉夫语、韩语、拉丁语、泰米尔语、泰卢固语、泰语
+- **共享检测模型**：所有V5语言模型使用相同的检测模型（`PP-OCRv5_mobile_det.mnn`）
 - **增强场景识别**：
   - 中英复杂手写体识别能力显著提升
   - 竖排文本识别优化
   - 生僻字识别能力增强
 - **性能提升**：相比PP-OCRv4端到端提升13个百分点
-- **模型文件**：
-  - 检测模型：`PP-OCRv5_mobile_det.mnn`
-  - 识别模型：`PP-OCRv5_mobile_rec.mnn`
+- **模型文件**（默认多语言）：
+  - 检测模型：`PP-OCRv5_mobile_det.mnn`（所有语言共享）
+  - 识别模型：`PP-OCRv5_mobile_rec.mnn`（默认，支持中文/英文/日文）
   - 字符集：`ppocr_keys_v5.txt`
+- **专用语言模型文件**（可选）：
+  - 识别模型：`{lang}_PP-OCRv5_mobile_rec_infer.mnn`
+  - 字符集：`ppocr_keys_{lang}.txt`
+  - 可用语言：`arabic`（阿拉伯语）、`cyrillic`（西里尔语）、`devanagari`（梵文字母）、`el`（希腊语）、`en`（英语）、`eslav`（东斯拉夫语）、`korean`（韩语）、`latin`（拉丁语）、`ta`（泰米尔语）、`te`（泰卢固语）、`th`（泰语）
 
 ### PP-OCRv5 FP16 ⭐️ 新增
 - **高效版本**：在不牺牲准确率的情况下提供更快的推理速度和更低的内存使用
@@ -61,6 +69,7 @@
 
 | 特性               | PP-OCRv4 | PP-OCRv5 | PP-OCRv5 FP16 |
 |--------------------|----------|----------|---------------|
+| 语言支持           | 中文、英文 | 多语言（默认支持中文/英文/日文，提供11+种专用语言模型） | 多语言（默认支持中文/英文/日文，提供11+种专用语言模型） |
 | 文字类型支持       | 中文、英文 | 简体中文、繁体中文、英文、日文、中文拼音 | 简体中文、繁体中文、英文、日文、中文拼音 |
 | 手写体识别         | 基础支持  | 显著增强  | 显著增强       |
 | 竖排文本           | 基础支持  | 优化提升  | 优化提升       |
@@ -68,7 +77,7 @@
 | 推理速度 (FPS)     | 1.1      | 1.2      | 1.2           |
 | 内存使用 (峰值)    | 422.22MB | 388.41MB | 388.41MB      |
 | 模型大小           | 标准      | 标准      | 减半           |
-| 推荐场景           | 常规文档  | 复杂场景  | 高性能场景     |
+| 推荐场景           | 常规文档  | 复杂场景与多语言 | 高性能场景与多语言 |
 
 ### PP-OCRv5 FP16 测试数据
 
@@ -191,6 +200,68 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+### 使用专用语言模型
+
+对于特定语言，使用专用语言模型可以获得更好的识别准确度：
+
+```rust
+use rust_paddle_ocr::{Det, Rec};
+use image::open;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 所有V5语言模型共享相同的检测模型
+    let mut det = Det::from_file("./models/PP-OCRv5_mobile_det.mnn")?;
+    
+    // === 示例1: 英语专用模型 ===
+    let mut rec_en = Rec::from_file(
+        "./models/en_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_en.txt"
+    )?;
+    
+    // === 示例2: 韩语模型 ===
+    let mut rec_ko = Rec::from_file(
+        "./models/korean_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_korean.txt"
+    )?;
+    
+    // === 示例3: 阿拉伯语模型 ===
+    let mut rec_ar = Rec::from_file(
+        "./models/arabic_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_arabic.txt"
+    )?;
+    
+    // 处理图像
+    let img = open("path/to/image.jpg")?;
+    let text_images = det.find_text_img(&img)?;
+    
+    for text_img in text_images {
+        let text = rec_en.predict_str(&text_img)?;
+        println!("识别的文本: {}", text);
+    }
+    
+    Ok(())
+}
+```
+
+#### 可用的语言模型
+
+| 语言 | 模型文件 | 字符集文件 | 适用场景 |
+|------|---------|-----------|---------|
+| 默认（多语言） | `PP-OCRv5_mobile_rec.mnn` | `ppocr_keys_v5.txt` | 中文、英文、日文（推荐通用使用） |
+| 阿拉伯语 | `arabic_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_arabic.txt` | 阿拉伯语文本识别 |
+| 西里尔语 | `cyrillic_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_cyrillic.txt` | 俄语、保加利亚语、塞尔维亚语等 |
+| 梵文字母 | `devanagari_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_devanagari.txt` | 印地语、马拉地语、尼泊尔语等 |
+| 希腊语 | `el_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_el.txt` | 希腊语文本识别 |
+| 英语 | `en_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_en.txt` | 纯英文文档 |
+| 东斯拉夫语 | `eslav_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_eslav.txt` | 乌克兰语、白俄罗斯语等 |
+| 韩语 | `korean_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_korean.txt` | 韩语文本识别 |
+| 拉丁语 | `latin_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_latin.txt` | 拉丁字母语言 |
+| 泰米尔语 | `ta_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_ta.txt` | 泰米尔语文本识别 |
+| 泰卢固语 | `te_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_te.txt` | 泰卢固语文本识别 |
+| 泰语 | `th_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_th.txt` | 泰语文本识别 |
+
+**注意**：所有专用语言模型使用相同的检测模型（`PP-OCRv5_mobile_det.mnn`）。根据目标语言选择合适的识别模型可获得最佳准确度。
 
 ### 作为C库使用
 

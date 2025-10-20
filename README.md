@@ -32,16 +32,24 @@ This library supports three PaddleOCR model versions:
 
 ### PP-OCRv5 ⭐️ Recommended
 - **Latest Version**: Next-generation text recognition solution
-- **Multi-Script Support**: Simplified Chinese, Chinese Pinyin, Traditional Chinese, English, Japanese
+- **Multi-Language Support**: The default model (`PP-OCRv5_mobile_rec.mnn`) supports Simplified Chinese, Traditional Chinese, English, Japanese, and Chinese Pinyin
+- **Language-Specific Models**: Dedicated models available for 11+ languages for optimal performance:
+  - Arabic, Cyrillic, Devanagari, Greek, English
+  - East Slavic, Korean, Latin, Tamil, Telugu, Thai
+- **Shared Detection**: All V5 language models use the same detection model (`PP-OCRv5_mobile_det.mnn`)
 - **Enhanced Scene Recognition**:
   - Significantly improved Chinese-English complex handwriting recognition
   - Optimized vertical text recognition
   - Enhanced rare character recognition capabilities
 - **Performance Improvement**: 13% end-to-end improvement compared to PP-OCRv4
-- **Model Files**:
-  - Detection model: `PP-OCRv5_mobile_det.mnn`
-  - Recognition model: `PP-OCRv5_mobile_rec.mnn`
+- **Model Files** (Default Multi-language):
+  - Detection model: `PP-OCRv5_mobile_det.mnn` (shared by all languages)
+  - Recognition model: `PP-OCRv5_mobile_rec.mnn` (default, supports Chinese/English/Japanese)
   - Character set: `ppocr_keys_v5.txt`
+- **Language-Specific Model Files** (Optional):
+  - Recognition models: `{lang}_PP-OCRv5_mobile_rec_infer.mnn`
+  - Character sets: `ppocr_keys_{lang}.txt`
+  - Available languages: `arabic`, `cyrillic`, `devanagari`, `el` (Greek), `en`, `eslav`, `korean`, `latin`, `ta` (Tamil), `te` (Telugu), `th` (Thai)
 
 ### PP-OCRv5 FP16 ⭐️ New
 - **Efficient Version**: Provides faster inference speed and lower memory usage without sacrificing accuracy
@@ -59,6 +67,7 @@ This library supports three PaddleOCR model versions:
 
 | Feature             | PP-OCRv4 | PP-OCRv5 | PP-OCRv5 FP16 |
 |---------------------|----------|----------|---------------|
+| Language Support    | Chinese, English | Multi-language (default supports Chinese/English/Japanese, 11+ dedicated language models available) | Multi-language (default supports Chinese/English/Japanese, 11+ dedicated language models available) |
 | Script Support      | Chinese, English | Simplified Chinese, Traditional Chinese, English, Japanese, Chinese Pinyin | Simplified Chinese, Traditional Chinese, English, Japanese, Chinese Pinyin |
 | Handwriting Support | Basic    | Enhanced | Enhanced |
 | Vertical Text       | Basic    | Optimized | Optimized |
@@ -66,7 +75,7 @@ This library supports three PaddleOCR model versions:
 | Inference Speed (FPS)| 1.1     | 1.2      | 1.2 |
 | Memory Usage (Peak) | 422.22MB | 388.41MB | 388.41MB |
 | Model Size          | Standard | Standard | Halved |
-| Recommended Use Case| Regular Documents | Complex Scenarios | High-Performance Scenarios |
+| Recommended Use Case| Regular Documents | Complex Scenarios & Multi-language | High-Performance Scenarios & Multi-language |
 
 ### PP-OCRv5 FP16 Test Data
 
@@ -188,6 +197,68 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+### Using Language-Specific Models
+
+For better recognition accuracy with specific languages, you can use dedicated language models:
+
+```rust
+use rust_paddle_ocr::{Det, Rec};
+use image::open;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // All V5 language models share the same detection model
+    let mut det = Det::from_file("./models/PP-OCRv5_mobile_det.mnn")?;
+    
+    // === Example 1: English-specific model ===
+    let mut rec_en = Rec::from_file(
+        "./models/en_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_en.txt"
+    )?;
+    
+    // === Example 2: Korean model ===
+    let mut rec_ko = Rec::from_file(
+        "./models/korean_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_korean.txt"
+    )?;
+    
+    // === Example 3: Arabic model ===
+    let mut rec_ar = Rec::from_file(
+        "./models/arabic_PP-OCRv5_mobile_rec_infer.mnn",
+        "./models/ppocr_keys_arabic.txt"
+    )?;
+    
+    // Process image
+    let img = open("path/to/image.jpg")?;
+    let text_images = det.find_text_img(&img)?;
+    
+    for text_img in text_images {
+        let text = rec_en.predict_str(&text_img)?;
+        println!("Recognized text: {}", text);
+    }
+    
+    Ok(())
+}
+```
+
+#### Available Language Models
+
+| Language | Model File | Character Set | Use Case |
+|----------|------------|---------------|----------|
+| Default (Multi-language) | `PP-OCRv5_mobile_rec.mnn` | `ppocr_keys_v5.txt` | Chinese, English, Japanese (Recommended for general use) |
+| Arabic | `arabic_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_arabic.txt` | Arabic text recognition |
+| Cyrillic | `cyrillic_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_cyrillic.txt` | Russian, Bulgarian, Serbian, etc. |
+| Devanagari | `devanagari_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_devanagari.txt` | Hindi, Marathi, Nepali, etc. |
+| Greek | `el_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_el.txt` | Greek text recognition |
+| English | `en_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_en.txt` | English-only documents |
+| East Slavic | `eslav_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_eslav.txt` | Ukrainian, Belarusian, etc. |
+| Korean | `korean_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_korean.txt` | Korean text recognition |
+| Latin | `latin_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_latin.txt` | Latin script languages |
+| Tamil | `ta_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_ta.txt` | Tamil text recognition |
+| Telugu | `te_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_te.txt` | Telugu text recognition |
+| Thai | `th_PP-OCRv5_mobile_rec_infer.mnn` | `ppocr_keys_th.txt` | Thai text recognition |
+
+**Note**: All language-specific models use the same detection model (`PP-OCRv5_mobile_det.mnn`). Choose the appropriate recognition model based on your target language for optimal accuracy.
 
 ## Command-line Tool
 
