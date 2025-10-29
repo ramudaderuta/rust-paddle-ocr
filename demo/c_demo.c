@@ -6,8 +6,8 @@ int main() {
     printf("=== Rust PaddleOCR C API Demo ===\n");
     
     // 模型文件路径
-    const char* det_model = "../models/PP-OCRv5_mobile_det.mnn";
-    const char* rec_model = "../models/PP-OCRv5_mobile_rec.mnn";
+    const char* det_model = "../models/PP-OCRv5_mobile_det_fp16.mnn";
+    const char* rec_model = "../models/PP-OCRv5_mobile_rec_fp16.mnn";
     const char* keys_file = "../models/ppocr_keys_v5.txt";
     const char* image_file = "../res/1.png";
     

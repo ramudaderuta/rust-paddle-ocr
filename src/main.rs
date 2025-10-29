@@ -4,21 +4,12 @@ use rust_paddle_ocr::{OcrEngineManager, OcrError, OcrResult};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-// 根据feature flag选择不同版本的模型
-#[cfg(feature = "v5")]
+// 使用v5版本的模型
 mod models {
     pub static DET_MODEL: &[u8] = include_bytes!("../models/PP-OCRv5_mobile_det_fp16.mnn");
     pub static REC_MODEL: &[u8] = include_bytes!("../models/PP-OCRv5_mobile_rec_fp16.mnn");
     pub static KEYS_DATA: &[u8] = include_bytes!("../models/ppocr_keys_v5.txt");
     pub const VERSION: &str = "v5";
-}
-
-#[cfg(not(feature = "v5"))]
-mod models {
-    pub static DET_MODEL: &[u8] = include_bytes!("../models/ch_PP-OCRv4_det_infer.mnn");
-    pub static REC_MODEL: &[u8] = include_bytes!("../models/ch_PP-OCRv4_rec_infer.mnn");
-    pub static KEYS_DATA: &[u8] = include_bytes!("../models/ppocr_keys_v4.txt");
-    pub const VERSION: &str = "v4";
 }
 
 use models::{DET_MODEL, KEYS_DATA, REC_MODEL};

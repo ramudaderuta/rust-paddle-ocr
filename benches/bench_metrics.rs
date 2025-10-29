@@ -4,16 +4,16 @@ use rust_paddle_ocr::{Det, Rec};
 use std::time::Duration;
 
 fn setup() -> (Det, Rec, DynamicImage) {
-    // 加载模型 - 在性能测试前完成
-    let det = Det::from_file("./models/ch_PP-OCRv4_det_infer.mnn")
+    // 加载v5版本模型 - 在性能测试前完成
+    let det = Det::from_file("./models/PP-OCRv5_mobile_det_fp16.mnn")
         .expect("Failed to load detection model")
         .with_rect_border_size(12)
         .with_merge_boxes(false)
         .with_merge_threshold(1);
 
     let rec = Rec::from_file(
-        "./models/ch_PP-OCRv4_rec_infer.mnn",
-        "./models/ppocr_keys_v4.txt",
+        "./models/PP-OCRv5_mobile_rec_fp16.mnn",
+        "./models/ppocr_keys_v5.txt",
     )
     .expect("Failed to load recognition model");
 

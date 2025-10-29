@@ -13,12 +13,12 @@ fn main() -> OcrResult<()> {
     env_logger::init();
 
     info!("正在初始化OCR引擎");
-    // 初始化全局OCR引擎，使用与simple示例相同的配置
-    // Initialize global OCR engine with the same configuration as simple example
+    // 初始化全局OCR引擎，使用v5版本模型
+    // Initialize global OCR engine with v5 version models
     OcrEngineManager::initialize_with_config(
-        "./models/ch_PP-OCRv4_det_infer.mnn",
-        "./models/ch_PP-OCRv4_rec_infer.mnn",
-        "./models/ppocr_keys_v4.txt",
+        "./models/PP-OCRv5_mobile_det_fp16.mnn",
+        "./models/PP-OCRv5_mobile_rec_fp16.mnn",
+        "./models/ppocr_keys_v5.txt",
         12,
         false,
         1,

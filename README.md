@@ -9,7 +9,7 @@ Welcome to the comprehensive documentation for the Rust PaddleOCR library. This 
 ```
   rust-paddle-ocr/
   ├── README.md                    # 📖 Main documentation index (this file)
-  └── docs/                       # 📁 Documentation folder
+  └── references/                       # 📁 Documentation folder
       ├── api-reference.md             # 📖 Complete API documentation (864 lines)
       ├── interactive-examples.md      # 🎯 Hands-on code playground (870 lines)
       ├── documentation-automation.md  # 📜 CI/CD and automation (1,386 lines)
@@ -23,16 +23,16 @@ Welcome to the comprehensive documentation for the Rust PaddleOCR library. This 
 ```
 
 ### Getting Started
-- [**Quick Start Guide**](docs/quick-start.md) - Get up and running in minutes
+- [**Quick Start Guide**](references/quick-start.md) - Get up and running in minutes
 
 ### Core Documentation
-- [**📖 API Reference**](docs/api-reference.md) - Complete API documentation with examples and performance metrics
-- [**🎯 Interactive Examples**](docs/interactive-examples.md) - Hands-on code playground with runnable examples
-- [**🔧 Code Analysis & Explanation**](docs/code-explanation.md) - Comprehensive code analysis with visual diagrams and step-by-step explanations
-- [**🏗️ Architecture Guide**](docs/architecture.md) - System architecture and component overview
-- [**🚨 Troubleshooting Guide**](docs/troubleshooting.md) - Common issues, solutions, and FAQ
-- [**Examples Guide**](docs/examples.md) - Comprehensive examples from basic to advanced
-- [**Performance Guide**](docs/performance.md) - Optimization techniques and best practices
+- [**📖 API Reference**](references/api-reference.md) - Complete API documentation with examples and performance metrics
+- [**🎯 Interactive Examples**](references/interactive-examples.md) - Hands-on code playground with runnable examples
+- [**🔧 Code Analysis & Explanation**](references/code-explanation.md) - Comprehensive code analysis with visual diagrams and step-by-step explanations
+- [**🏗️ Architecture Guide**](references/architecture.md) - System architecture and component overview
+- [**🚨 Troubleshooting Guide**](references/troubleshooting.md) - Common issues, solutions, and FAQ
+- [**Examples Guide**](references/examples.md) - Comprehensive examples from basic to advanced
+- [**Performance Guide**](references/performance.md) - Optimization techniques and best practices
 
 ## 📋 Library Overview
 

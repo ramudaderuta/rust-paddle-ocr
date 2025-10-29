@@ -29,7 +29,6 @@ exclude = [
 
 [features]
 default = ["fast_resize"]
-v5 = []
 fast_resize = ["fast_image_resize"]
 
 [lib]

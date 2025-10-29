@@ -773,8 +773,8 @@ class RocrTester:
 
 def run_ffi_tests():
     """运行完整的FFI测试套件"""
-    det_model = "models/PP-OCRv5_mobile_det.mnn"
-    rec_model = "models/PP-OCRv5_mobile_rec.mnn"
+    det_model = "models/PP-OCRv5_mobile_det_fp16.mnn"
+    rec_model = "models/PP-OCRv5_mobile_rec_fp16.mnn"
     keys_file = "./models/ppocr_keys_v5.txt"
     image_file = "./res/1.png"
     

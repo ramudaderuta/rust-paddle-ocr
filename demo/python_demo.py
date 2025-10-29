@@ -81,7 +81,7 @@ def main():
     det_model = b"../models/PP-OCRv5_mobile_det_fp16.mnn"
     rec_model = b"../models/PP-OCRv5_mobile_rec_fp16.mnn"
     keys_file = b"../models/ppocr_keys_v5.txt"
-    image_file = b"../res/4.png"
+    image_file = b"../res/1.png"
     
     # 显示版本信息
     version = lib.rocr_version().decode('utf-8')
