@@ -2,8 +2,6 @@
 
 ## 🔍 Code Complexity Analysis
 
-**Overall Complexity Score: 7/10 (Advanced)**
-
 The Rust PaddleOCR library demonstrates sophisticated Rust programming patterns including:
 - **Thread-safe concurrent programming** with actor pattern
 - **Memory-efficient image processing** with smart cropping strategies
@@ -67,40 +65,57 @@ graph TB
     Cropper --> Rayon
 ```
 
-### Data Flow Sequence
+### Visual Flow Diagram
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant Manager as OcrEngineManager
     participant Engine as OcrEngine
     participant Worker as Worker Thread
-    participant Det as Detection Model
-    participant Rec as Recognition Model
+    participant Model as MNN Models
 
-    Client->>Manager: process_ocr(image)
-    Manager->>Engine: Send ProcessOcr request
+    Client->>Engine: process_ocr(image)
+    Engine->>Engine: Create channel
     Engine->>Worker: OcrRequest::ProcessOcr
-
-    Worker->>Det: find_text_rect(image)
-    Det-->>Worker: Vec<Rect>
-
-    Worker->>Det: extract_text_images(rects)
-    Det-->>Worker: Vec<DynamicImage>
-
-    loop Process each text region
-        Worker->>Rec: predict_str(text_image)
-        Rec-->>Worker: String
-    end
-
-    Worker-->>Engine: Vec<String> via channel
-    Engine-->>Manager: Vec<String>
-    Manager-->>Client: Vec<String>
+    Worker->>Model: Detect text regions
+    Model-->>Worker: Text regions
+    Worker->>Model: Recognize each region
+    Model-->>Worker: Text strings
+    Worker-->>Engine: Results via channel
+    Engine-->>Client: OCR results
 ```
 
 ---
 
 ## 📚 Step-by-Step Code Explanation
+
+### Complete OCR Pipeline
+
+```mermaid
+flowchart TD
+    A[Input Image] --> B{Engine Initialized?}
+    B -->|No| C[Initialize Models]
+    C --> D[Create Worker Thread]
+    D --> E[Send OCR Request]
+    B -->|Yes| E
+
+    E --> F[Worker Thread Receives]
+    F --> G[Text Detection Phase]
+    G --> H[Find Text Regions]
+    H --> I{Use Efficient Cropping?}
+
+    I -->|Yes| J[Smart Crop Strategy]
+    I -->|No| K[Standard Crop]
+
+    J --> L[Text Recognition Phase]
+    K --> L
+
+    L --> M[Process Each Region]
+    M --> N[Character Recognition]
+    N --> O[Assemble Results]
+    O --> P[Return via Channel]
+    P --> Q[Client Receives Results]
+```
 
 ### Step 1: Singleton Pattern Implementation
 
@@ -458,78 +473,6 @@ let texts = OcrEngineManager::process_ocr_efficient(large_image)?;
 2. **Don't ignore error handling** - Can crash your application
 3. **Don't clone large images unnecessarily** - Use `ImageRef`
 4. **Don't block main thread with OCR operations** - Use async if needed
-
----
-
-## 📖 Learning Path Recommendations
-
-### For Beginners (Week 1-2)
-
-**Topics to Study:**
-1. **Rust Basics**: Ownership, borrowing, lifetimes
-2. **Error Handling**: `Result<T, E>` and `?` operator
-3. **Basic Image Processing**: `image` crate fundamentals
-4. **OCR Concepts**: How text detection and recognition work
-
-**Recommended Resources:**
-- [The Rust Book](https://doc.rust-lang.org/book/) - Chapters 4-10
-- [Rust by Example](https://doc.rust-lang.org/rust-by-example/) - Error handling section
-- [Image Processing Tutorial](https://github.com/image-rs/image/tree/master/examples)
-
-**Practice Project:**
-Build a simple image converter that:
-1. Loads images from a directory
-2. Resizes them to standard dimensions
-3. Saves them with different formats
-
-### For Intermediate Developers (Week 3-4)
-
-**Topics to Study:**
-1. **Concurrency in Rust**: Threads, channels, `Arc<Mutex<T>>`
-2. **Actor Pattern**: Message passing and sequential processing
-3. **Memory Management**: Smart pointers, zero-copy optimizations
-4. **Model Integration**: How to integrate ML models in Rust
-
-**Recommended Resources:**
-- [Rust Concurrency Book](https://rust-lang.github.io/book/ch16-00-fearless-concurrency.html)
-- [Crossbeam Documentation](https://docs.rs/crossbeam/) - Advanced concurrency
-- [MNN Framework Documentation](https://github.com/alibaba/MNN)
-
-**Practice Project:**
-Build a multi-threaded image processor that:
-1. Processes images from a queue
-2. Uses worker threads for CPU-intensive operations
-3. Implements graceful shutdown
-4. Includes performance metrics
-
-### For Advanced Developers (Week 5-6)
-
-**Topics to Study:**
-1. **Systems Programming**: FFI, memory layout, optimization
-2. **Performance Profiling**: `perf`, `valgrind`, custom metrics
-3. **Production Deployment**: Monitoring, logging, resource management
-4. **Advanced Patterns**: Singleton, factory, observer patterns
-
-**Recommended Resources:**
-- [Rust Performance Book](https://nnethercote.github.io/perf-book/)
-- [The Rustonomicon](https://doc.rust-lang.org/nomicon/) - Unsafe Rust
-- [Design Patterns in Rust](https://rust-unofficial.github.io/patterns/)
-
-**Practice Project:**
-Build a production-ready OCR service that:
-1. Exposes HTTP API for OCR processing
-2. Includes request queuing and rate limiting
-3. Implements health checks and monitoring
-4. Handles graceful degradation under load
-5. Includes comprehensive logging and metrics
-
-### Advanced Topics for Mastery
-
-1. **GPU Acceleration**: Implement CUDA/OpenCL support
-2. **Distributed Processing**: Build cluster-based OCR processing
-3. **Real-time Processing**: Video stream OCR with low latency
-4. **Custom Model Training**: Integrate with PyTorch/TensorFlow
-5. **WebAssembly**: Compile to WASM for browser-based OCR
 
 ---
 

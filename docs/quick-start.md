@@ -124,15 +124,3 @@ OcrEngineManager::initialize_with_config(
 3. **Memory issues**
    - Use `process_ocr_efficient()` for large images
    - Process images in batches
-
-### Getting Help
-
-- Check the [Code Analysis](code-analysis.md) for detailed explanations
-- Review the examples in the `examples/` directory
-- Open an issue on GitHub for bugs
-
-## Next Steps
-
-- Read the [Architecture Guide](architecture.md)
-- Check out the [Examples](examples.md)
-- Learn about [Performance Optimization](performance.md)

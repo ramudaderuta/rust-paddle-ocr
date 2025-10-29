@@ -829,37 +829,3 @@ let det = Det::from_file("det.mnn")?
     .with_rect_border_size(25)
     .with_merge_threshold(10);
 ```
-
----
-
-## Version History
-
-### v1.4.2 (Current)
-- Added efficient cropping strategies
-- Improved memory management
-- Enhanced error handling
-- C API stability improvements
-
-### v1.4.0
-- Actor pattern implementation
-- Thread-safe singleton manager
-- Performance optimizations
-- Multi-threading support
-
-### v1.3.0
-- MNN framework integration
-- Fast image resize support
-- Configuration improvements
-
----
-
-## License and Support
-
-- **License**: Apache License 2.0
-- **Repository**: https://github.com/zibo-chen/rust-paddle-ocr
-- **Issues**: https://github.com/zibo-chen/rust-paddle-ocr/issues
-- **Documentation**: https://docs.rs/rust-paddle-ocr/
-
----
-
-*This API reference is automatically generated from source code analysis and stays synchronized with the latest library version.*

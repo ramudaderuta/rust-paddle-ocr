@@ -844,28 +844,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
-
----
-
-## 🎯 Next Steps
-
-1. **Choose Your Path**: Select a learning path based on your goals
-2. **Run the Examples**: Execute the playground examples to understand capabilities
-3. **Experiment**: Modify the examples to suit your use case
-4. **Build**: Create your own OCR application using the patterns learned
-5. **Optimize**: Apply performance tuning techniques for production use
-
----
-
-## 💬 Community Examples
-
-Share your own examples and learn from others:
-
-- **GitHub Issues**: Post interesting use cases as issues
-- **Discussions**: Join community discussions for tips and tricks
-- **Pull Requests**: Contribute your examples to the repository
-- **Blog Posts**: Share your OCR projects and implementations
-
----
-
-*Happy coding with Rust PaddleOCR! 🦀✨*
