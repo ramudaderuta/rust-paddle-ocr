@@ -1,5 +1,5 @@
 ---
-name: rust-paddle-ocr-integration
+name: rust-paddle-ocr
 description: This skill provides comprehensive guidance for integrating the Rust PaddleOCR library into applications. Use this skill when users need to add OCR functionality to Rust projects, including web servers, desktop applications, CLI tools, or embedded systems. The skill covers integration patterns, performance optimization, troubleshooting common issues, and best practices for production deployment.
 ---
 
